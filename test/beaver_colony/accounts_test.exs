@@ -139,7 +139,11 @@ defmodule BeaverColony.AccountsTest do
 
       token =
         extract_beaver_token(fn url ->
-          Accounts.deliver_beaver_update_email_instructions(%{beaver | email: email}, beaver.email, url)
+          Accounts.deliver_beaver_update_email_instructions(
+            %{beaver | email: email},
+            beaver.email,
+            url
+          )
         end)
 
       %{beaver: beaver, token: token, email: email}

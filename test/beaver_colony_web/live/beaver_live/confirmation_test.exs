@@ -11,7 +11,10 @@ defmodule BeaverColonyWeb.BeaverLive.ConfirmationTest do
   end
 
   describe "Confirm beaver" do
-    test "renders confirmation page for unconfirmed beaver", %{conn: conn, unconfirmed_beaver: beaver} do
+    test "renders confirmation page for unconfirmed beaver", %{
+      conn: conn,
+      unconfirmed_beaver: beaver
+    } do
       token =
         extract_beaver_token(fn url ->
           Accounts.deliver_login_instructions(beaver, url)
@@ -32,7 +35,10 @@ defmodule BeaverColonyWeb.BeaverLive.ConfirmationTest do
       assert html =~ "Keep me logged in on this device"
     end
 
-    test "renders login page for already logged in beaver", %{conn: conn, confirmed_beaver: beaver} do
+    test "renders login page for already logged in beaver", %{
+      conn: conn,
+      confirmed_beaver: beaver
+    } do
       conn = log_in_beaver(conn, beaver)
 
       token =

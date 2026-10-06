@@ -1,18 +1,42 @@
-# BeaverColony
+# Beaver Colony 🦫
 
-To start your Phoenix server:
+A small Phoenix LiveView app about beavers who form colonies to build dams. It exists to teach three things:
 
-* Run `mix setup` to install and setup dependencies
-* Start Phoenix endpoint with `mix phx.server` or inside IEx with `iex -S mix phx.server`
+1. **One LiveView, one job.** Navigating between LiveViews is a separate problem with its own architecture.
+2. **Phoenix 1.8 Scopes.** `%Scope{}` carries who is asking, which colony they're in and what role they hold, and every context function takes it first.
+3. **A secure multi-tenant sidebar.** It adapts to your role in the current colony and slides off and on screen.
 
-Now you can visit [`localhost:4000`](http://localhost:4000) from your browser.
+The colony is the tenant. A beaver can belong to many colonies, with one role in each:
 
-Ready to run in production? Please [check our deployment guides](https://phoenix.hexdocs.pm/deployment.html).
+| Role | Can |
+|---|---|
+| **Dam Developer** | Founded the colony and runs it |
+| **Lodge Keeper** | Approves new members, keeps the colony organized |
+| **Builder** | Does the building |
 
-## Learn more
+Every account is a beaver, and every beaver has personal pages (`/me`) that belong to no colony.
 
-* Official website: https://www.phoenixframework.org/
-* Guides: https://phoenix.hexdocs.pm/overview.html
-* Docs: https://phoenix.hexdocs.pm
-* Forum: https://elixirforum.com/c/phoenix-forum
-* Source: https://github.com/phoenixframework/phoenix
+## Running it
+
+Requirements: Elixir 1.17+ and PostgreSQL.
+
+```sh
+mix setup        # deps, database, assets
+mix phx.server   # http://localhost:4000
+```
+
+The database password defaults to `postgres`. If yours is different, set `PGPASSWORD` instead of editing config:
+
+```sh
+PGPASSWORD=secret mix setup
+```
+
+Run the tests with `mix test`.
+
+## The article series
+
+The project is built from zero alongside a series of articles. `docs/journal.md` records the decisions as they're made.
+
+## License
+
+MIT. See [LICENSE](LICENSE).

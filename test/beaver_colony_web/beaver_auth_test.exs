@@ -64,7 +64,10 @@ defmodule BeaverColonyWeb.BeaverAuthTest do
       assert redirected_to(conn) == "/hello"
     end
 
-    test "clears the return-to path from the session after logging in", %{conn: conn, beaver: beaver} do
+    test "clears the return-to path from the session after logging in", %{
+      conn: conn,
+      beaver: beaver
+    } do
       conn =
         conn
         |> assign(:current_scope, Scope.for_beaver(beaver))
@@ -76,7 +79,9 @@ defmodule BeaverColonyWeb.BeaverAuthTest do
     end
 
     test "writes a cookie if remember_me is configured", %{conn: conn, beaver: beaver} do
-      conn = conn |> fetch_cookies() |> BeaverAuth.log_in_beaver(beaver, %{"remember_me" => "true"})
+      conn =
+        conn |> fetch_cookies() |> BeaverAuth.log_in_beaver(beaver, %{"remember_me" => "true"})
+
       assert get_session(conn, :beaver_token) == conn.cookies[@remember_me_cookie]
       assert get_session(conn, :beaver_remember_me) == true
 
@@ -94,8 +99,13 @@ defmodule BeaverColonyWeb.BeaverAuthTest do
       assert redirected_to(conn) == ~p"/beavers/settings"
     end
 
-    test "writes a cookie if remember_me was set in previous session", %{conn: conn, beaver: beaver} do
-      conn = conn |> fetch_cookies() |> BeaverAuth.log_in_beaver(beaver, %{"remember_me" => "true"})
+    test "writes a cookie if remember_me was set in previous session", %{
+      conn: conn,
+      beaver: beaver
+    } do
+      conn =
+        conn |> fetch_cookies() |> BeaverAuth.log_in_beaver(beaver, %{"remember_me" => "true"})
+
       assert get_session(conn, :beaver_token) == conn.cookies[@remember_me_cookie]
       assert get_session(conn, :beaver_remember_me) == true
 
@@ -159,7 +169,9 @@ defmodule BeaverColonyWeb.BeaverAuthTest do
       beaver_token = Accounts.generate_beaver_session_token(beaver)
 
       conn =
-        conn |> put_session(:beaver_token, beaver_token) |> BeaverAuth.fetch_current_scope_for_beaver([])
+        conn
+        |> put_session(:beaver_token, beaver_token)
+        |> BeaverAuth.fetch_current_scope_for_beaver([])
 
       assert conn.assigns.current_scope.beaver.id == beaver.id
       assert conn.assigns.current_scope.beaver.authenticated_at == beaver.authenticated_at
@@ -194,7 +206,10 @@ defmodule BeaverColonyWeb.BeaverAuthTest do
       refute conn.assigns.current_scope
     end
 
-    test "reissues a new token after a few days and refreshes cookie", %{conn: conn, beaver: beaver} do
+    test "reissues a new token after a few days and refreshes cookie", %{
+      conn: conn,
+      beaver: beaver
+    } do
       logged_in_conn =
         conn |> fetch_cookies() |> BeaverAuth.log_in_beaver(beaver, %{"remember_me" => "true"})
 
@@ -257,7 +272,10 @@ defmodule BeaverColonyWeb.BeaverAuthTest do
   end
 
   describe "on_mount :require_authenticated" do
-    test "authenticates current_scope based on a valid beaver_token", %{conn: conn, beaver: beaver} do
+    test "authenticates current_scope based on a valid beaver_token", %{
+      conn: conn,
+      beaver: beaver
+    } do
       beaver_token = Accounts.generate_beaver_session_token(beaver)
       session = conn |> put_session(:beaver_token, beaver_token) |> get_session()
 
@@ -294,7 +312,10 @@ defmodule BeaverColonyWeb.BeaverAuthTest do
   end
 
   describe "on_mount :require_sudo_mode" do
-    test "allows beavers that have authenticated in the last 10 minutes", %{conn: conn, beaver: beaver} do
+    test "allows beavers that have authenticated in the last 10 minutes", %{
+      conn: conn,
+      beaver: beaver
+    } do
       beaver_token = Accounts.generate_beaver_session_token(beaver)
       session = conn |> put_session(:beaver_token, beaver_token) |> get_session()
 

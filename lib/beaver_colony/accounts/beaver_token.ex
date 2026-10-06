@@ -46,7 +46,9 @@ defmodule BeaverColony.Accounts.BeaverToken do
   def build_session_token(beaver) do
     token = :crypto.strong_rand_bytes(@rand_size)
     dt = beaver.authenticated_at || DateTime.utc_now(:second)
-    {token, %BeaverToken{token: token, context: "session", beaver_id: beaver.id, authenticated_at: dt}}
+
+    {token,
+     %BeaverToken{token: token, context: "session", beaver_id: beaver.id, authenticated_at: dt}}
   end
 
   @doc """

@@ -167,13 +167,22 @@ defmodule BeaverColonyWeb.BeaverLive.SettingsTest do
 
       token =
         extract_beaver_token(fn url ->
-          Accounts.deliver_beaver_update_email_instructions(%{beaver | email: email}, beaver.email, url)
+          Accounts.deliver_beaver_update_email_instructions(
+            %{beaver | email: email},
+            beaver.email,
+            url
+          )
         end)
 
       %{conn: log_in_beaver(conn, beaver), token: token, email: email, beaver: beaver}
     end
 
-    test "updates the beaver email once", %{conn: conn, beaver: beaver, token: token, email: email} do
+    test "updates the beaver email once", %{
+      conn: conn,
+      beaver: beaver,
+      token: token,
+      email: email
+    } do
       {:error, redirect} = live(conn, ~p"/beavers/settings/confirm-email/#{token}")
 
       assert {:live_redirect, %{to: path, flash: flash}} = redirect

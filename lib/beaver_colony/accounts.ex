@@ -255,9 +255,14 @@ defmodule BeaverColony.Accounts do
       {:ok, %{to: ..., body: ...}}
 
   """
-  def deliver_beaver_update_email_instructions(%Beaver{} = beaver, current_email, update_email_url_fun)
+  def deliver_beaver_update_email_instructions(
+        %Beaver{} = beaver,
+        current_email,
+        update_email_url_fun
+      )
       when is_function(update_email_url_fun, 1) do
-    {encoded_token, beaver_token} = BeaverToken.build_email_token(beaver, "change:#{current_email}")
+    {encoded_token, beaver_token} =
+      BeaverToken.build_email_token(beaver, "change:#{current_email}")
 
     Repo.insert!(beaver_token)
     BeaverNotifier.deliver_update_email_instructions(beaver, update_email_url_fun.(encoded_token))
@@ -288,7 +293,9 @@ defmodule BeaverColony.Accounts do
       with {:ok, beaver} <- Repo.update(changeset) do
         tokens_to_expire = Repo.all_by(BeaverToken, beaver_id: beaver.id)
 
-        Repo.delete_all(from(t in BeaverToken, where: t.id in ^Enum.map(tokens_to_expire, & &1.id)))
+        Repo.delete_all(
+          from(t in BeaverToken, where: t.id in ^Enum.map(tokens_to_expire, & &1.id))
+        )
 
         {:ok, {beaver, tokens_to_expire}}
       end
