@@ -3,7 +3,7 @@ import Config
 # Configure your database
 config :beaver_colony, BeaverColony.Repo,
   username: "postgres",
-  password: "postgres",
+  password: System.get_env("PGPASSWORD", "postgres"),
   hostname: "localhost",
   database: "beaver_colony_dev",
   stacktrace: true,

@@ -7,6 +7,19 @@
 # General application configuration
 import Config
 
+config :beaver_colony, :scopes,
+  beaver: [
+    default: true,
+    module: BeaverColony.Accounts.Scope,
+    assign_key: :current_scope,
+    access_path: [:beaver, :id],
+    schema_key: :beaver_id,
+    schema_type: :binary_id,
+    schema_table: :beavers,
+    test_data_fixture: BeaverColony.AccountsFixtures,
+    test_setup_helper: :register_and_log_in_beaver
+  ]
+
 config :beaver_colony,
   ecto_repos: [BeaverColony.Repo],
   generators: [timestamp_type: :utc_datetime, binary_id: true]
