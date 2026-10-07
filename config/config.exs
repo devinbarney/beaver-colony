@@ -36,6 +36,10 @@ config :beaver_colony, :scopes,
     test_setup_helper: :register_and_log_in_beaver_with_colony
   ]
 
+# Signing in as a demo beaver without a password (see BeaverColony.Demo). Off unless an
+# environment turns it on.
+config :beaver_colony, :demo, enabled: false, reset_every: nil
+
 config :beaver_colony,
   ecto_repos: [BeaverColony.Repo],
   generators: [timestamp_type: :utc_datetime, binary_id: true]

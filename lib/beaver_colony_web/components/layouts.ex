@@ -37,7 +37,7 @@ defmodule BeaverColonyWeb.Layouts do
 
   slot :inner_block, required: true
 
-  def app(%{nav: nav, current_scope: %{beaver: _}} = assigns) when nav != nil do
+  def app(%{nav: nav} = assigns) when nav != nil do
     # Built at render time from the scope, so the sidebar always matches it.
     assigns = assign(assigns, :sidebar, Nav.build(assigns.current_scope, nav))
 

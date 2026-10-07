@@ -55,6 +55,10 @@ config :beaver_colony, BeaverColonyWeb.Endpoint,
 # Enable dev routes for dashboard and mailbox
 config :beaver_colony, dev_routes: true
 
+# Let the guide's "Try it as..." sign in as the seeded demo beavers. No reset in dev:
+# it would wipe changes you're making to the demo colonies.
+config :beaver_colony, :demo, enabled: true
+
 # Do not include metadata nor timestamps in development logs
 config :logger, :default_formatter, format: "[$level] $message\n"
 

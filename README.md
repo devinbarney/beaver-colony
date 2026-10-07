@@ -45,9 +45,20 @@ PGPASSWORD = "secret"
 
 Run the tests with `mix test`.
 
-## The article series
+## The guide
 
-The project is built from zero alongside a series of articles. `docs/journal.md` records the decisions as they're made.
+The app explains itself. Open [`/guide`](http://localhost:4000/guide) for the article series about how it's built, in the same sidebar the articles describe. The articles are markdown in `priv/guide`, and `docs/journal.md` records decisions as they're made.
+
+![A guide article, with the parts in the sidebar](docs/screenshots/guide-article.png)
+
+### Demo mode
+
+The guide's switcher offers **Try it as a Builder / Lodge Keeper / Dam Developer**, which signs you in as a seeded demo beaver with no password. Because that is a passwordless sign-in, it is off unless configured:
+
+- on in dev and test (`config :beaver_colony, :demo, enabled: true`)
+- off in production unless `DEMO_MODE=true`, with `DEMO_RESET_HOURS` (default 24) putting the demo data back on an interval
+
+Only turn it on where the demo accounts hold nothing that matters.
 
 ## License
 

@@ -150,6 +150,12 @@
     background-color 100ms ease;
 }
 
+.nav-item__text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
 .nav-item__label {
   overflow: hidden;
   text-overflow: ellipsis;

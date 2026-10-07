@@ -95,3 +95,24 @@ The context broadcasts to all three.
 **Smaller things**
 - The generated home page didn't use `Layouts.app`. Its signed-in menu came from the root layout, so moving that menu broke three generated tests. The home page is now a short Beaver Colony welcome that uses the plain layout.
 - `priv/repo/seeds.exs` adds three demo beavers across two colonies, with a pending request. It's safe to run again.
+
+## 2026-10-07 — Phase 6: the guide inside the app
+
+**The articles live in the app, in the sidebar they describe.**
+- `BeaverColony.Guide` compiles `priv/guide/<part>-<slug>.md` with NimblePublisher, the same pattern as the blog that will host them later, so they can move over unchanged.
+- `/guide` and `/guide/:id` are public, in a `:guide` live_session.
+- `Nav` gained a second area. `on_mount(:guide, ...)` loads the articles, and `build/2` turns them into the page items. The switcher reads "📖 The guide" and, when demos are on, offers *Try it as a Builder / Lodge Keeper / Dam Developer*.
+- The app's switcher links back to the guide.
+
+Same function, same components, one more area. That's the payoff of keeping the nav as data.
+
+**Demo sign-in is a passwordless login, so it's off by default.**
+- `POST /demo/:role` signs you in as a seeded demo beaver and lands you in Willamette Colony.
+- It's a 404 unless `config :beaver_colony, :demo, enabled: true`: on in dev and test, and in production only with `DEMO_MODE=true`.
+- It's a POST behind CSRF protection, so a link on another site can't sign a visitor in. Tests skip CSRF, so this was checked in a real browser.
+- `Demo.Reset` re-seeds on an interval, but only where `reset_every` is set. It never runs in dev, where it would wipe your changes.
+- Seeding moved from `seeds.exs` into `BeaverColony.Demo.seed!/0` so the reset can reuse it.
+
+**Code highlighting** comes from Makeup: a friendly light style, and monokai under `[data-theme=dark]`, generated once into `assets/css/makeup.css`.
+
+**The articles are drafts**, written from this journal, waiting to be rewritten in the author's voice.

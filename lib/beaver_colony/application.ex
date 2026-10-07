@@ -7,16 +7,18 @@ defmodule BeaverColony.Application do
 
   @impl true
   def start(_type, _args) do
-    children = [
-      BeaverColonyWeb.Telemetry,
-      BeaverColony.Repo,
-      {DNSCluster, query: Application.get_env(:beaver_colony, :dns_cluster_query) || :ignore},
-      {Phoenix.PubSub, name: BeaverColony.PubSub},
-      # Start a worker by calling: BeaverColony.Worker.start_link(arg)
-      # {BeaverColony.Worker, arg},
-      # Start to serve requests, typically the last entry
-      BeaverColonyWeb.Endpoint
-    ]
+    children =
+      [
+        BeaverColonyWeb.Telemetry,
+        BeaverColony.Repo,
+        {DNSCluster, query: Application.get_env(:beaver_colony, :dns_cluster_query) || :ignore},
+        {Phoenix.PubSub, name: BeaverColony.PubSub},
+        # Resets the demo data on an interval, when configured.
+        BeaverColony.Demo.Reset.child_spec_if_configured(),
+        # Start to serve requests, typically the last entry
+        BeaverColonyWeb.Endpoint
+      ]
+      |> Enum.reject(&is_nil/1)
 
     # See https://elixir.hexdocs.pm/Supervisor.html
     # for other strategies and supported options

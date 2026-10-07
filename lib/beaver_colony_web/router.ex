@@ -21,6 +21,19 @@ defmodule BeaverColonyWeb.Router do
     pipe_through :browser
 
     get "/", PageController, :home
+
+    # The article series, open to everyone, in the same sidebar it describes.
+    live_session :guide,
+      on_mount: [
+        {BeaverColonyWeb.BeaverAuth, :mount_current_scope},
+        {BeaverColonyWeb.Nav, :guide}
+      ] do
+      live "/guide", GuideLive.Index, :index
+      live "/guide/:id", GuideLive.Show, :show
+    end
+
+    # "Try it as..." in the guide. A 404 unless demos are configured on.
+    post "/demo/:role", DemoController, :create
   end
 
   # Other scopes may use custom stacks.

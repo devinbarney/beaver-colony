@@ -1,0 +1,157 @@
+/* ==========================================================================
+   GUIDE: the in-app article series. Readable prose for rendered markdown.
+   ========================================================================== */
+
+.guide-article__part {
+  font-size: 0.875rem;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--color-primary);
+}
+
+.guide-article__title {
+  margin-top: 0.25rem;
+  font-size: 2rem;
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+.guide-article__description {
+  margin-top: 0.75rem;
+  font-size: 1.125rem;
+  opacity: 0.75;
+}
+
+.guide-article__pager {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-top: 3rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid var(--color-base-300);
+}
+
+.guide-article__pager a {
+  color: var(--color-primary);
+}
+
+.guide-contents {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  margin-top: 2rem;
+}
+
+.guide-contents__item {
+  display: block;
+  padding: 1rem 1.25rem;
+  border: 1px solid var(--color-base-300);
+  border-radius: var(--radius-box);
+  transition: border-color 150ms ease;
+}
+
+.guide-contents__item:hover {
+  border-color: var(--color-primary);
+}
+
+.guide-contents__title {
+  font-weight: 600;
+}
+
+.guide-contents__description {
+  margin-top: 0.25rem;
+  opacity: 0.75;
+}
+
+/* Rendered markdown */
+
+.guide-prose {
+  margin-top: 2rem;
+  line-height: 1.75;
+}
+
+.guide-prose > * + * {
+  margin-top: 1.25em;
+}
+
+.guide-prose h2 {
+  margin-top: 2.5em;
+  font-size: 1.5rem;
+  font-weight: 700;
+  line-height: 1.3;
+}
+
+.guide-prose h3 {
+  margin-top: 2em;
+  font-size: 1.25rem;
+  font-weight: 600;
+}
+
+.guide-prose a {
+  color: var(--color-primary);
+  text-decoration: underline;
+}
+
+.guide-prose ul,
+.guide-prose ol {
+  padding-left: 1.5rem;
+}
+
+.guide-prose ul {
+  list-style: disc;
+}
+
+.guide-prose ol {
+  list-style: decimal;
+}
+
+.guide-prose li + li {
+  margin-top: 0.5em;
+}
+
+.guide-prose blockquote {
+  padding-left: 1rem;
+  border-left: 4px solid var(--color-primary);
+  opacity: 0.85;
+}
+
+.guide-prose :not(pre) > code {
+  padding: 0.125em 0.375em;
+  border-radius: 0.25rem;
+  font-size: 0.875em;
+  background-color: var(--color-base-200);
+}
+
+.guide-prose pre {
+  padding: 1rem 1.25rem;
+  overflow-x: auto;
+  border-radius: var(--radius-box);
+  font-size: 0.875rem;
+  line-height: 1.6;
+}
+
+.guide-prose pre code.makeup {
+  background: transparent;
+}
+
+.guide-prose pre:has(code.makeup) {
+  background-color: #f0f0f0;
+}
+
+[data-theme="dark"] .guide-prose pre:has(code.makeup) {
+  background-color: #272822;
+}
+
+.guide-prose table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9375rem;
+}
+
+.guide-prose th,
+.guide-prose td {
+  padding: 0.5rem 0.75rem;
+  border-bottom: 1px solid var(--color-base-300);
+  text-align: left;
+}

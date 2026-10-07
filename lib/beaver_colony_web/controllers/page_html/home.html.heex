@@ -12,6 +12,7 @@
   </p>
 
   <div class="flex gap-4">
+    <.button navigate={~p"/guide"}>Read the guide</.button>
     <%= if @current_scope do %>
       <.button navigate={~p"/me/colonies"} variant="primary">Go to my colonies</.button>
     <% else %>

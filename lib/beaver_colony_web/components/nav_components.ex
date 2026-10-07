@@ -21,7 +21,7 @@ defmodule BeaverColonyWeb.NavComponents do
           <line x1="9" y1="4" x2="9" y2="20" />
         </svg>
       </label>
-      <.link navigate={~p"/me/colonies"} class="nav__brand">🦫 Beaver Colony</.link>
+      <.link navigate={~p"/"} class="nav__brand">🦫 Beaver Colony</.link>
       <div class="nav__header-end">
         {render_slot(@inner_block)}
       </div>
@@ -76,7 +76,10 @@ defmodule BeaverColonyWeb.NavComponents do
         class={["nav-item__link", @item[:current] && "nav-item__link--current"]}
         aria-current={@item[:current] && "page"}
       >
-        <span class="nav-item__label">{@item.label}</span>
+        <span class="nav-item__text">
+          <span class="nav-item__label">{@item.label}</span>
+          <span :if={@item[:sublabel]} class="nav-item__sublabel">{@item.sublabel}</span>
+        </span>
         <span :if={@item[:badge] not in [nil, 0]} class="nav-item__badge">{@item.badge}</span>
       </.link>
     </li>
@@ -94,7 +97,11 @@ defmodule BeaverColonyWeb.NavComponents do
   defp nav_child(%{child: %{method: _}} = assigns) do
     ~H"""
     <li role="menuitem">
-      <.link href={@child.path} method={@child.method} class="nav-submenu__item">
+      <.link
+        href={@child.path}
+        method={@child.method}
+        class={["nav-submenu__item", @child[:special] && "nav-submenu__item--special"]}
+      >
         {@child.label}
       </.link>
     </li>

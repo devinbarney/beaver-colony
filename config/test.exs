@@ -42,3 +42,6 @@ config :phoenix_live_view,
 # Sort query params output of verified routes for robust url comparisons
 config :phoenix,
   sort_verified_routes_query_params: true
+
+# Tests turn demo sign-in on; the Reset process never starts (no reset_every).
+config :beaver_colony, :demo, enabled: true

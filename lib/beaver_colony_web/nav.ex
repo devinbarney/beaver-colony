@@ -12,6 +12,13 @@ defmodule BeaverColonyWeb.Nav do
       the layout calls `build/2` at render time, so the sidebar can never disagree with
       the scope it was rendered with.
 
+  ## Two areas
+
+  `on_mount(:default, ...)` is for the app: personal pages and colony pages, always
+  signed in. `on_mount(:guide, ...)` is for the article series, open to anyone, where
+  the items are the articles. Both use the same sidebar, so reading the guide is also
+  a tour of the nav it describes.
+
   ## Which pages appear
 
   A colony page appears if the scope can open it, using the same `Scope.can?/2` the
@@ -32,19 +39,20 @@ defmodule BeaverColonyWeb.Nav do
   import Phoenix.LiveView, only: [attach_hook: 4, connected?: 1]
 
   alias BeaverColony.Accounts.Scope
-  alias BeaverColony.Colonies
+  alias BeaverColony.{Colonies, Demo, Guide}
   alias BeaverColony.Colonies.Policy
 
   ## Loading
 
-  def on_mount(:default, _params, _session, socket) do
+  def on_mount(area, _params, _session, socket) when area in [:default, :guide] do
     scope = socket.assigns.current_scope
+    area = if area == :default, do: :app, else: :guide
 
-    if connected?(socket), do: Colonies.subscribe_my_access(scope)
+    if connected?(socket) and signed_in?(scope), do: Colonies.subscribe_my_access(scope)
 
     socket =
       socket
-      |> assign(:nav, load(scope, ""))
+      |> assign(:nav, load(scope, area, ""))
       |> attach_hook(:nav_current_path, :handle_params, fn _params, uri, socket ->
         {:cont, update(socket, :nav, &%{&1 | current_path: URI.parse(uri).path})}
       end)
@@ -64,16 +72,22 @@ defmodule BeaverColonyWeb.Nav do
   the Members page letting a beaver in, which lowers the pending badge.
   """
   def refresh(socket) do
-    assign(socket, :nav, load(socket.assigns.current_scope, socket.assigns.nav.current_path))
+    %{area: area, current_path: path} = socket.assigns.nav
+    assign(socket, :nav, load(socket.assigns.current_scope, area, path))
   end
 
-  defp load(scope, current_path) do
+  defp load(scope, area, current_path) do
     %{
-      memberships: Colonies.list_memberships(scope),
+      area: area,
+      memberships: if(signed_in?(scope), do: Colonies.list_memberships(scope), else: []),
       pending: if(Scope.can?(scope, :manage_members), do: Colonies.count_pending(scope), else: 0),
+      articles: if(area == :guide, do: Guide.list_articles(), else: []),
+      demo_roles: if(Demo.enabled?(), do: Demo.roles(), else: []),
       current_path: current_path
     }
   end
+
+  defp signed_in?(scope), do: match?(%Scope{beaver: %{}}, scope)
 
   ## Building
 
@@ -106,18 +120,36 @@ defmodule BeaverColonyWeb.Nav do
   end
 
   @doc """
-  The sidebar for `scope`, given the `@nav` data the hook loaded.
+  The sidebar for `scope` (`nil` when signed out, which only the guide allows), given
+  the `@nav` data the hook loaded.
 
   Returns `%{context: [item], items: [item], footer: [item]}`. An item is a map with
-  `:id`, `:label`, maybe a `:sublabel`, and either `:path` (a link, maybe with `:badge`
-  and `:current`) or `:children` (a flyout).
+  `:id`, `:label`, maybe a `:sublabel`, and either `:path` (a link, maybe with `:badge`,
+  `:current` or `:method`) or `:children` (a flyout).
   """
-  def build(%Scope{} = scope, nav) do
+  def build(scope, nav) do
     %{
-      context: [switcher(scope, nav.memberships)],
+      context: [switcher(scope, nav)],
       items: items(scope, nav) |> mark_current(nav.current_path),
-      footer: [account_menu(scope)]
+      footer: footer(scope)
     }
+  end
+
+  # The guide: its contents page, then each article.
+  defp items(_scope, %{area: :guide} = nav) do
+    contents = %{id: "guide-contents", label: "Contents", path: ~p"/guide"}
+
+    articles =
+      for article <- nav.articles do
+        %{
+          id: "guide-#{article.id}",
+          label: article.title,
+          sublabel: "Part #{article.part}",
+          path: ~p"/guide/#{article.id}"
+        }
+      end
+
+    [contents | articles]
   end
 
   # Inside a colony: the colony's pages this role can open.
@@ -141,48 +173,98 @@ defmodule BeaverColonyWeb.Nav do
     Enum.map(items, &Map.put(&1, :current, &1.path == current_path))
   end
 
-  # Where you are, and where else you could be: yourself, or one of your colonies with
-  # your role there. Each option is a plain link; the destination checks access again.
-  defp switcher(scope, memberships) do
-    me = %{id: "me", label: "🦫 Me", path: ~p"/me/colonies", current: scope.colony == nil}
-
-    colonies =
-      for membership <- memberships do
-        %{
-          id: "colony-#{membership.colony.id}",
-          label: membership.colony.name,
-          sublabel: Policy.display_name(membership.role),
-          path: ~p"/colonies/#{membership.colony}",
-          current: scope.colony != nil and scope.colony.id == membership.colony.id
-        }
-      end
+  # Where you are, and where else you could be: yourself, one of your colonies (with
+  # your role there), or the guide, and in a demo, one of the demo beavers. Each option
+  # is a plain link; the destination checks access again.
+  defp switcher(scope, nav) do
+    {label, sublabel} = where(scope, nav)
 
     %{
       id: "switcher",
-      label: if(scope.colony, do: scope.colony.name, else: "🦫 Me"),
-      sublabel: if(scope.colony, do: Policy.display_name(scope.role), else: "Your own pages"),
-      children:
-        [me | colonies] ++
-          [
-            %{id: "switcher-divider", divider: true},
-            %{
-              id: "find-colony",
-              label: "Find or found a colony",
-              path: ~p"/me/colonies",
-              special: true
-            }
-          ]
+      label: label,
+      sublabel: sublabel,
+      children: places(scope, nav) ++ guide_option(scope, nav) ++ demo_options(nav)
     }
   end
 
-  defp account_menu(scope) do
-    %{
-      id: "account-menu",
-      label: scope.beaver.email,
-      children: [
-        %{id: "account-settings", label: "Account settings", path: ~p"/beavers/settings"},
-        %{id: "log-out", label: "Log out", path: ~p"/beavers/log-out", method: :delete}
+  defp where(_scope, %{area: :guide}), do: {"📖 The guide", "How this app is built"}
+  defp where(%Scope{colony: nil}, _nav), do: {"🦫 Me", "Your own pages"}
+  defp where(scope, _nav), do: {scope.colony.name, Policy.display_name(scope.role)}
+
+  defp places(scope, nav) do
+    if signed_in?(scope) do
+      in_app = nav.area == :app
+
+      me = %{
+        id: "me",
+        label: "🦫 Me",
+        path: ~p"/me/colonies",
+        current: in_app and scope.colony == nil
+      }
+
+      colonies =
+        for membership <- nav.memberships do
+          %{
+            id: "colony-#{membership.colony.id}",
+            label: membership.colony.name,
+            sublabel: Policy.display_name(membership.role),
+            path: ~p"/colonies/#{membership.colony}",
+            current: in_app and scope.colony != nil and scope.colony.id == membership.colony.id
+          }
+        end
+
+      [me | colonies] ++ [%{id: "places-divider", divider: true}]
+    else
+      []
+    end
+  end
+
+  defp guide_option(scope, nav) do
+    guide = %{id: "guide", label: "📖 The guide", path: ~p"/guide", current: nav.area == :guide}
+
+    if signed_in?(scope) do
+      find = %{id: "find-colony", label: "Find or found a colony", path: ~p"/me/colonies"}
+      [guide, Map.put(find, :special, true)]
+    else
+      [guide]
+    end
+  end
+
+  # Signing in as a demo beaver is a POST, so these are form-backed links.
+  defp demo_options(%{demo_roles: []}), do: []
+
+  defp demo_options(nav) do
+    options =
+      for role <- nav.demo_roles do
+        %{
+          id: "demo-#{role}",
+          label: "Try it as a #{Policy.display_name(role)}",
+          path: ~p"/demo/#{role}",
+          method: :post,
+          special: true
+        }
+      end
+
+    [%{id: "demo-divider", divider: true} | options]
+  end
+
+  defp footer(scope) do
+    if signed_in?(scope) do
+      [
+        %{
+          id: "account-menu",
+          label: scope.beaver.email,
+          children: [
+            %{id: "account-settings", label: "Account settings", path: ~p"/beavers/settings"},
+            %{id: "log-out", label: "Log out", path: ~p"/beavers/log-out", method: :delete}
+          ]
+        }
       ]
-    }
+    else
+      [
+        %{id: "log-in", label: "Log in", path: ~p"/beavers/log-in"},
+        %{id: "register", label: "Become a beaver", path: ~p"/beavers/register"}
+      ]
+    end
   end
 end

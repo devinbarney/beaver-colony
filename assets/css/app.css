@@ -4,6 +4,8 @@
 @import "tailwindcss" source(none);
 @import "phoenix-colocated/beaver_colony/colocated.css";
 @import "./navigation.css";
+@import "./guide.css";
+@import "./makeup.css";
 @source "../css";
 @source "../js";
 @source "../../lib/beaver_colony_web";

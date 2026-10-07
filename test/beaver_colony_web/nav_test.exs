@@ -9,12 +9,23 @@ defmodule BeaverColonyWeb.NavTest do
   alias BeaverColony.Colonies.Policy
   alias BeaverColonyWeb.Nav
 
-  defp nav_for(scope, current_path \\ "") do
-    Nav.build(scope, %{
-      memberships: Colonies.list_memberships(scope),
-      pending: 0,
-      current_path: current_path
-    })
+  defp nav_for(scope, current_path \\ "", extra \\ %{}) do
+    Nav.build(scope, nav_data(Colonies.list_memberships(scope), current_path, extra))
+  end
+
+  # The shape `Nav`'s on_mount loads, for an app page with demos off.
+  defp nav_data(memberships, current_path, extra) do
+    Map.merge(
+      %{
+        area: :app,
+        memberships: memberships,
+        pending: 0,
+        articles: [],
+        demo_roles: [],
+        current_path: current_path
+      },
+      extra
+    )
   end
 
   defp item_ids(nav), do: Enum.map(nav.items, & &1.id)
@@ -60,7 +71,7 @@ defmodule BeaverColonyWeb.NavTest do
 
     test "the members link carries the pending count" do
       scope = colony_scope_fixture(:lodge_keeper)
-      nav = Nav.build(scope, %{memberships: [], pending: 3, current_path: ""})
+      nav = Nav.build(scope, nav_data([], "", %{pending: 3}))
 
       assert %{badge: 3} = Enum.find(nav.items, &(&1.id == "members"))
     end

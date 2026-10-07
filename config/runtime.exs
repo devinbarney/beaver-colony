@@ -41,6 +41,14 @@ if config_env() == :dev do
 end
 
 if config_env() == :prod do
+  # A public demo: DEMO_MODE=true lets anyone sign in as the demo beavers, and
+  # DEMO_RESET_HOURS puts the demo data back on that interval.
+  if System.get_env("DEMO_MODE") == "true" do
+    config :beaver_colony, :demo,
+      enabled: true,
+      reset_every: :timer.hours(String.to_integer(System.get_env("DEMO_RESET_HOURS", "24")))
+  end
+
   database_url =
     System.get_env("DATABASE_URL") ||
       raise """
