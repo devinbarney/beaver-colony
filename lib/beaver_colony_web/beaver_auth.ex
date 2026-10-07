@@ -269,6 +269,9 @@ defmodule BeaverColonyWeb.BeaverAuth do
             Scope.put_colony(scope, membership.colony, membership.role)
           )
           |> Phoenix.LiveView.attach_hook(:pin_colony, :handle_params, &pin_colony/3)
+          |> Phoenix.LiveView.attach_hook(:refresh_colony, :handle_info, &refresh_colony/2)
+
+        if Phoenix.LiveView.connected?(socket), do: Colonies.subscribe_my_memberships(scope)
 
         {:cont, socket}
 
@@ -281,7 +284,8 @@ defmodule BeaverColonyWeb.BeaverAuth do
     scope = socket.assigns.current_scope
 
     if Scope.can?(scope, ability) do
-      {:cont, socket}
+      # Kept so `refresh_colony/2` can check the page again if the role changes.
+      {:cont, Phoenix.Component.assign(socket, :required_ability, ability)}
     else
       socket =
         socket
@@ -291,6 +295,45 @@ defmodule BeaverColonyWeb.BeaverAuth do
       {:halt, socket}
     end
   end
+
+  # The beaver's membership changed somewhere, maybe while this page is open. The
+  # message only names a colony, so read the membership again rather than trusting it,
+  # then rebuild the scope. Leave the colony if the beaver is no longer in it, or the
+  # page if their new role can't open it. The hook owns this message: it always halts,
+  # so pages never have to handle it.
+  defp refresh_colony({:membership_changed, colony_id}, socket) do
+    scope = socket.assigns.current_scope
+
+    socket =
+      if colony_id == scope.colony.id do
+        case Colonies.fetch_membership(scope, colony_id) do
+          {:ok, membership} ->
+            scope = Scope.put_colony(scope, membership.colony, membership.role)
+            socket = Phoenix.Component.assign(socket, :current_scope, scope)
+            ability = socket.assigns[:required_ability]
+
+            if ability && !Scope.can?(scope, ability) do
+              socket
+              |> Phoenix.LiveView.put_flash(
+                :error,
+                "Your role changed, and can't open that page."
+              )
+              |> Phoenix.LiveView.push_navigate(to: denied_path(scope))
+            else
+              socket
+            end
+
+          {:error, :not_found} ->
+            deny_colony(socket)
+        end
+      else
+        socket
+      end
+
+    {:halt, socket}
+  end
+
+  defp refresh_colony(_message, socket), do: {:cont, socket}
 
   # on_mount only runs when a LiveView mounts. A patch (`push_patch`, `<.link patch>`)
   # keeps the mounted LiveView and its scope but can change the URL's colony_id, which

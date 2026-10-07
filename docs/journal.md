@@ -45,3 +45,27 @@ The second command gives us `BeaverColony.Accounts.Scope` with `defstruct beaver
 **Not found means not found.** A colony that doesn't exist, one you're not in, one where you're still pending, and an id that isn't a UUID all give the same answer. Otherwise the error would tell a stranger which colonies exist.
 
 **The patch hole, proven.** `on_mount` doesn't run on a patch. A test patches from colony A's members page to colony B's, where the beaver *is* a member, and expects a redirect. With the pin hook removed, that test fails: the page would show B's URL with A's scope.
+
+## 2026-10-07 — Phase 3: joining, and authority that stays current
+
+**The flow.** A beaver sees *Other colonies* on My colonies and asks to join. That makes a pending Builder membership. A Lodge Keeper (or the Dam Developer) lets them in or declines. The Dam Developer changes roles. Anyone can remove a member ranked below them.
+
+**One rank rule covers every management action.** You can only act on beavers ranked *below* you, and only give out roles *below* your own. That single rule in `Policy.outranks?/2` means:
+- no one can create a second Dam Developer;
+- a Lodge Keeper can't remove another Lodge Keeper;
+- a colony can never lose its Dam Developer.
+
+The Members page uses the same rule only to decide which buttons to show. The context enforces it.
+
+**Colony names are public, colony data isn't.** Beavers need to find a colony to join, so names are listed. Everything else still needs an approved membership.
+
+**Messages are nudges, not facts.** Every membership change is broadcast on two topics: the beaver's (`beaver:<id>:memberships`) and the colony's (`colony:<id>:memberships`). The message only says *which colony* changed, never the new role. Whoever receives it reads the membership again from the database. A message can't grant anything, and a stale or forged one does no harm.
+
+**Authority stays current on open pages.** `:assign_colony` subscribes to the beaver's topic and attaches a `handle_info` hook that owns those messages, so pages never handle them. When the beaver's membership in *this* colony changes, the hook:
+- rebuilds the scope with the new role (a promoted Builder sees "Lodge Keeper" without reloading);
+- leaves the page if the new role can't open it (each `{:require, ability}` page records its ability for exactly this check);
+- leaves the colony if the membership is gone.
+
+Without this, a demoted or removed beaver keeps their old powers on any page they already have open, until their next navigation. A mutation check confirmed it: delete the hook and exactly those three tests fail.
+
+**A compiler catch.** A hidden input named `id` triggers a LiveView warning: it shadows the form element's own `id`. It's now `membership_id`.

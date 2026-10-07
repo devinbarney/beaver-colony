@@ -35,6 +35,17 @@ defmodule BeaverColony.Colonies.Policy do
     rank(role) >= rank(Map.fetch!(@abilities, ability))
   end
 
+  @doc """
+  Whether role `a` ranks above role `b`. A beaver can only manage beavers ranked below
+  them, and only give out roles below their own.
+  """
+  def outranks?(a, b) when a in @roles and b in @roles, do: rank(a) > rank(b)
+
+  @doc """
+  The role named by a form param, or `nil`. Never `String.to_atom/1` on user input.
+  """
+  def role_from_param(param), do: Enum.find(@roles, &(Atom.to_string(&1) == param))
+
   @doc "How a role reads on screen."
   def display_name(:dam_developer), do: "Dam Developer"
   def display_name(:lodge_keeper), do: "Lodge Keeper"

@@ -16,7 +16,7 @@ defmodule BeaverColony.Colonies do
 
   alias BeaverColony.Repo
   alias BeaverColony.Accounts.Scope
-  alias BeaverColony.Colonies.{Colony, Membership}
+  alias BeaverColony.Colonies.{Colony, Membership, Policy}
 
   ## Personal: the beaver's own colonies (no colony in the scope)
 
@@ -49,6 +49,47 @@ defmodule BeaverColony.Colonies do
         {:ok, colony}
       end
     end)
+  end
+
+  @doc """
+  Colonies the beaver could join: every colony they aren't a member of, by name, each
+  with `:pending` if they've already asked or `nil` if not.
+
+  Colony *names* are public so beavers can find one to join. Nothing else about a
+  colony is visible without an approved membership.
+  """
+  def list_other_colonies(%Scope{beaver: beaver}) do
+    Repo.all(
+      from c in Colony,
+        left_join: m in Membership,
+        on: m.colony_id == c.id and m.beaver_id == ^beaver.id,
+        where: is_nil(m.id) or m.status == :pending,
+        order_by: c.name,
+        select: {c, m.status}
+    )
+  end
+
+  @doc """
+  Asks to join the colony with id `colony_id`, as a Builder. The request waits for a
+  Lodge Keeper or the Dam Developer (see `approve_membership/2`).
+  """
+  def request_to_join(%Scope{beaver: beaver}, colony_id) do
+    with {:ok, colony_id} <- Ecto.UUID.cast(colony_id),
+         {:ok, membership} <-
+           %Membership{
+             beaver_id: beaver.id,
+             colony_id: colony_id,
+             role: :builder,
+             status: :pending
+           }
+           |> Membership.insert_changeset()
+           |> Repo.insert() do
+      broadcast_changed(membership)
+      {:ok, membership}
+    else
+      :error -> {:error, :not_found}
+      {:error, changeset} -> {:error, changeset}
+    end
   end
 
   @doc """
@@ -101,6 +142,93 @@ defmodule BeaverColony.Colonies do
   end
 
   @doc """
+  The colony's requests to join, with their beavers, oldest first.
+  """
+  def list_pending(%Scope{colony: %Colony{id: colony_id}}) do
+    Repo.all(
+      from m in Membership,
+        where: m.colony_id == ^colony_id and m.status == :pending,
+        order_by: m.inserted_at,
+        preload: :beaver
+    )
+  end
+
+  @doc """
+  Lets a beaver who asked to join into the colony. Needs `:manage_members`.
+  """
+  def approve_membership(%Scope{} = scope, membership_id) do
+    with :ok <- authorize(scope, :manage_members),
+         {:ok, membership} <- fetch_colony_membership(scope, membership_id, :pending),
+         {:ok, membership} <-
+           membership |> Ecto.Changeset.change(status: :approved) |> Repo.update() do
+      broadcast_changed(membership)
+      {:ok, membership}
+    end
+  end
+
+  @doc """
+  Turns down a request to join. Needs `:manage_members`.
+  """
+  def decline_membership(%Scope{} = scope, membership_id) do
+    with :ok <- authorize(scope, :manage_members),
+         {:ok, membership} <- fetch_colony_membership(scope, membership_id, :pending),
+         {:ok, membership} <- Repo.delete(membership) do
+      broadcast_changed(membership)
+      {:ok, membership}
+    end
+  end
+
+  @doc """
+  Gives a member a new role. Needs `:manage_colony`, and both the member's current
+  role and the new one must rank below the caller's, so no one can promote someone to
+  their own level or touch a peer.
+  """
+  def change_role(%Scope{} = scope, membership_id, role) do
+    with :ok <- authorize(scope, :manage_colony),
+         {:ok, membership} <- fetch_colony_membership(scope, membership_id, :approved),
+         :ok <- authorize_outranks(scope, membership.role),
+         :ok <- authorize_outranks(scope, role),
+         {:ok, membership} <- membership |> Ecto.Changeset.change(role: role) |> Repo.update() do
+      broadcast_changed(membership)
+      {:ok, membership}
+    end
+  end
+
+  @doc """
+  Removes a member from the colony. Needs `:manage_members`, and the member must rank
+  below the caller.
+  """
+  def remove_member(%Scope{} = scope, membership_id) do
+    with :ok <- authorize(scope, :manage_members),
+         {:ok, membership} <- fetch_colony_membership(scope, membership_id, :approved),
+         :ok <- authorize_outranks(scope, membership.role),
+         {:ok, membership} <- Repo.delete(membership) do
+      broadcast_changed(membership)
+      {:ok, membership}
+    end
+  end
+
+  # A membership by the caller's id, but only within the scope's colony: an id from
+  # another colony is simply not found.
+  defp fetch_colony_membership(%Scope{colony: %Colony{id: colony_id}}, membership_id, status) do
+    with {:ok, membership_id} <- Ecto.UUID.cast(membership_id),
+         %Membership{} = membership <-
+           Repo.get_by(Membership, id: membership_id, colony_id: colony_id, status: status) do
+      {:ok, membership}
+    else
+      _ -> {:error, :not_found}
+    end
+  end
+
+  # Always called after `authorize/2`, so the scope has a role. `other_role` may be nil
+  # (an unknown role from a form), which is refused like any other bad role.
+  defp authorize_outranks(%Scope{role: role}, other_role) do
+    if other_role in Policy.roles() and Policy.outranks?(role, other_role),
+      do: :ok,
+      else: {:error, :unauthorized}
+  end
+
+  @doc """
   Renames the scope's colony. Needs `:manage_colony`.
 
   The colony comes from the scope, so there is no way to name a different one.
@@ -116,4 +244,50 @@ defmodule BeaverColony.Colonies do
   defp authorize(scope, ability) do
     if Scope.can?(scope, ability), do: :ok, else: {:error, :unauthorized}
   end
+
+  ## Live updates
+  #
+  # A membership change is announced on two topics, both derived from the scope the
+  # way `phx.gen.live` derives its topics:
+  #
+  #   * the beaver's, so their open pages re-check their access (`BeaverColonyWeb.BeaverAuth`)
+  #   * the colony's, so its Members page can refresh
+  #
+  # The messages only say *which* colony changed, never the new role. Receivers read
+  # the membership again from the database, so a message can't grant anything.
+
+  @doc """
+  Subscribes to changes in the scope's beaver's own memberships.
+
+  Messages: `{:membership_changed, colony_id}`.
+  """
+  def subscribe_my_memberships(%Scope{beaver: beaver}) do
+    Phoenix.PubSub.subscribe(BeaverColony.PubSub, beaver_topic(beaver.id))
+  end
+
+  @doc """
+  Subscribes to changes in the scope's colony's memberships.
+
+  Messages: `{:memberships_changed, colony_id}`.
+  """
+  def subscribe_colony_memberships(%Scope{colony: %Colony{id: colony_id}}) do
+    Phoenix.PubSub.subscribe(BeaverColony.PubSub, colony_topic(colony_id))
+  end
+
+  defp broadcast_changed(%Membership{beaver_id: beaver_id, colony_id: colony_id}) do
+    Phoenix.PubSub.broadcast(
+      BeaverColony.PubSub,
+      beaver_topic(beaver_id),
+      {:membership_changed, colony_id}
+    )
+
+    Phoenix.PubSub.broadcast(
+      BeaverColony.PubSub,
+      colony_topic(colony_id),
+      {:memberships_changed, colony_id}
+    )
+  end
+
+  defp beaver_topic(beaver_id), do: "beaver:#{beaver_id}:memberships"
+  defp colony_topic(colony_id), do: "colony:#{colony_id}:memberships"
 end
