@@ -9,7 +9,7 @@ import Config
 
 config :beaver_colony, :scopes,
   beaver: [
-    default: true,
+    default: false,
     module: BeaverColony.Accounts.Scope,
     assign_key: :current_scope,
     access_path: [:beaver, :id],
@@ -18,6 +18,22 @@ config :beaver_colony, :scopes,
     schema_table: :beavers,
     test_data_fixture: BeaverColony.AccountsFixtures,
     test_setup_helper: :register_and_log_in_beaver
+  ],
+  # Data a colony owns. `mix phx.gen.live` uses this one unless told `--scope beaver`:
+  # it adds a colony_id to the schema, filters every query by scope.colony.id and
+  # nests routes under /colonies/:colony_id.
+  colony: [
+    default: true,
+    module: BeaverColony.Accounts.Scope,
+    assign_key: :current_scope,
+    access_path: [:colony, :id],
+    route_prefix: "/colonies/:colony_id",
+    route_access_path: [:colony, :id],
+    schema_key: :colony_id,
+    schema_type: :binary_id,
+    schema_table: :colonies,
+    test_data_fixture: BeaverColony.ColoniesFixtures,
+    test_setup_helper: :register_and_log_in_beaver_with_colony
   ]
 
 config :beaver_colony,

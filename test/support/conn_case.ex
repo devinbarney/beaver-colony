@@ -57,6 +57,28 @@ defmodule BeaverColonyWeb.ConnCase do
   end
 
   @doc """
+  Setup helper that registers and logs in a beaver who belongs to a new colony.
+
+  The role defaults to `:dam_developer`. Tag a test or describe block with
+  `@tag role: :builder` to log in as a different role.
+
+      setup :register_and_log_in_beaver_with_colony
+
+  It stores an updated connection, the beaver, their colony scope and the colony in
+  the test context.
+  """
+  def register_and_log_in_beaver_with_colony(%{conn: conn} = context) do
+    scope = BeaverColony.ColoniesFixtures.colony_scope_fixture(context[:role] || :dam_developer)
+
+    %{
+      conn: log_in_beaver(conn, scope.beaver),
+      beaver: scope.beaver,
+      scope: scope,
+      colony: scope.colony
+    }
+  end
+
+  @doc """
   Logs the given `beaver` into the `conn`.
 
   It returns an updated `conn`.

@@ -54,9 +54,25 @@ defmodule BeaverColonyWeb.Router do
       on_mount: [{BeaverColonyWeb.BeaverAuth, :require_authenticated}] do
       live "/beavers/settings", BeaverLive.Settings, :edit
       live "/beavers/settings/confirm-email/:token", BeaverLive.Settings, :confirm_email
+
+      # Personal pages: the beaver's own data, no colony in the scope.
+      live "/me/colonies", ColonyLive.Mine, :index
     end
 
     post "/beavers/update-password", BeaverSessionController, :update_password
+
+    # Every colony page. The URL names the colony, :assign_colony puts it in the scope
+    # with the beaver's role there, and each LiveView declares the ability it needs
+    # with `on_mount {BeaverAuth, {:require, ability}}`. The router never names a role.
+    live_session :colony,
+      on_mount: [
+        {BeaverColonyWeb.BeaverAuth, :require_authenticated},
+        {BeaverColonyWeb.BeaverAuth, :assign_colony}
+      ] do
+      live "/colonies/:colony_id", ColonyLive.Dashboard, :show
+      live "/colonies/:colony_id/members", ColonyLive.Members, :index
+      live "/colonies/:colony_id/settings", ColonyLive.Settings, :edit
+    end
   end
 
   scope "/", BeaverColonyWeb do

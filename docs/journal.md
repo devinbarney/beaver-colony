@@ -24,3 +24,24 @@ The second command gives us `BeaverColony.Accounts.Scope` with `defstruct beaver
 - The sidebar is a pure function of the scope. Its slide state lives in the root layout, so it costs the server nothing.
 
 **A small surprise.** The generated auth code fails `mix format --check-formatted`. The templates are sized for `user`, and `beaver` is two characters longer, which pushes some lines past 98 columns. One `mix format` fixes it. Worth knowing before CI tells you.
+
+## 2026-10-07 — Phase 2: colonies in the scope
+
+**What was built**
+- `Colony` (the tenant) and `Membership` (beaver, colony, role, status). One membership per beaver per colony, enforced by a unique index. A beaver has exactly one role in each colony.
+- `Colonies.Policy`: the *only* table of who may do what. Roles are ranked (Builder < Lodge Keeper < Dam Developer), so each ability names just the lowest role that has it. An unknown ability raises, so a typo fails loudly instead of locking everyone out.
+- `%Scope{beaver, colony, role}`, with `Scope.put_colony/3` and `Scope.can?/2`. `can?/2` is always false without a colony.
+- Two `on_mount` clauses in the generated `BeaverAuth`:
+  - `:assign_colony` loads the colony **through** the beaver's approved membership, in one query, and puts it in the scope. It also attaches the pin hook.
+  - `{:require, ability}` is declared by each LiveView itself: `on_mount {BeaverAuth, {:require, :manage_members}}`.
+- One `live_session :colony` for every colony page. The router never names a role.
+- A `colony` generator scope in `config.exs`, now the default. `mix phx.gen.live` will produce colony-scoped code from here on.
+- Placeholder pages: My colonies (found one), Dashboard (any member), Members (Lodge Keeper+), Settings (Dam Developer).
+
+**Two rules every context function follows**
+1. *Reads are filtered by the scope.* A colony's data is only queried with `scope.colony.id`, never with an id from the caller.
+2. *Writes check the scope's ability* and return `{:error, :unauthorized}`. The page checks first only to give a friendly redirect; the context doesn't trust that it did.
+
+**Not found means not found.** A colony that doesn't exist, one you're not in, one where you're still pending, and an id that isn't a UUID all give the same answer. Otherwise the error would tell a stranger which colonies exist.
+
+**The patch hole, proven.** `on_mount` doesn't run on a patch. A test patches from colony A's members page to colony B's, where the beaver *is* a member, and expects a redirect. With the pin hook removed, that test fails: the page would show B's URL with A's scope.

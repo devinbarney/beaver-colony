@@ -6,6 +6,7 @@ defmodule BeaverColonyWeb.BeaverAuth do
 
   alias BeaverColony.Accounts
   alias BeaverColony.Accounts.Scope
+  alias BeaverColony.Colonies
 
   # Make the remember me cookie valid for 14 days. This should match
   # the session validity setting in BeaverToken.
@@ -194,6 +195,16 @@ defmodule BeaverColonyWeb.BeaverAuth do
       on beaver_token.
       Redirects to login page if there's no logged beaver.
 
+    * `:assign_colony` - Narrows the current_scope to the colony in the
+      `colony_id` URL param, with the beaver's role there. Must follow
+      `:require_authenticated`. Redirects to the beaver's colonies if they
+      aren't an approved member.
+
+    * `{:require, ability}` - Lets the page mount only if the current_scope
+      has `ability` in its colony (see `BeaverColony.Colonies.Policy`).
+      Declared by each LiveView with the `on_mount` macro, so the page itself
+      says what it needs.
+
   ## Examples
 
   Use the `on_mount` lifecycle macro in LiveViews to mount or authenticate
@@ -245,6 +256,63 @@ defmodule BeaverColonyWeb.BeaverAuth do
       {:halt, socket}
     end
   end
+
+  def on_mount(:assign_colony, %{"colony_id" => colony_id}, _session, socket) do
+    scope = socket.assigns.current_scope
+
+    case Colonies.fetch_membership(scope, colony_id) do
+      {:ok, membership} ->
+        socket =
+          socket
+          |> Phoenix.Component.assign(
+            :current_scope,
+            Scope.put_colony(scope, membership.colony, membership.role)
+          )
+          |> Phoenix.LiveView.attach_hook(:pin_colony, :handle_params, &pin_colony/3)
+
+        {:cont, socket}
+
+      {:error, :not_found} ->
+        {:halt, deny_colony(socket)}
+    end
+  end
+
+  def on_mount({:require, ability}, _params, _session, socket) do
+    scope = socket.assigns.current_scope
+
+    if Scope.can?(scope, ability) do
+      {:cont, socket}
+    else
+      socket =
+        socket
+        |> Phoenix.LiveView.put_flash(:error, "Your role in this colony can't open that page.")
+        |> Phoenix.LiveView.redirect(to: denied_path(scope))
+
+      {:halt, socket}
+    end
+  end
+
+  # on_mount only runs when a LiveView mounts. A patch (`push_patch`, `<.link patch>`)
+  # keeps the mounted LiveView and its scope but can change the URL's colony_id, which
+  # would leave the page showing one colony's URL with another colony's scope. Refuse.
+  defp pin_colony(params, _uri, socket) do
+    if params["colony_id"] == socket.assigns.current_scope.colony.id do
+      {:cont, socket}
+    else
+      {:halt, deny_colony(socket)}
+    end
+  end
+
+  defp deny_colony(socket) do
+    socket
+    |> Phoenix.LiveView.put_flash(:error, "You aren't a member of that colony.")
+    |> Phoenix.LiveView.redirect(to: ~p"/me/colonies")
+  end
+
+  defp denied_path(%Scope{colony: %Colonies.Colony{id: colony_id}}),
+    do: ~p"/colonies/#{colony_id}"
+
+  defp denied_path(_scope), do: ~p"/me/colonies"
 
   defp mount_current_scope(socket, session) do
     Phoenix.Component.assign_new(socket, :current_scope, fn ->
