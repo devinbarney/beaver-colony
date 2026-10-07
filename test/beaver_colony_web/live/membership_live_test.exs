@@ -56,7 +56,9 @@ defmodule BeaverColonyWeb.MembershipLiveTest do
       |> render_change()
 
       assert render(lv) =~ "Role changed."
-      assert [_, %{role: :lodge_keeper}] = Colonies.list_members(colony_scope(colony))
+
+      assert [_, %{role: :lodge_keeper}] =
+               Colonies.list_members(dam_developer_scope_fixture(colony))
     end
 
     @tag role: :lodge_keeper
@@ -83,7 +85,11 @@ defmodule BeaverColonyWeb.MembershipLiveTest do
       assert html =~ "a Builder here"
 
       {:ok, _} =
-        Colonies.change_role(colony_scope(colony), membership_id(beaver, colony), :lodge_keeper)
+        Colonies.change_role(
+          dam_developer_scope_fixture(colony),
+          membership_id(beaver, colony),
+          :lodge_keeper
+        )
 
       assert render(lv) =~ "a Lodge Keeper here"
     end
@@ -97,7 +103,11 @@ defmodule BeaverColonyWeb.MembershipLiveTest do
       {:ok, lv, _html} = live(conn, ~p"/colonies/#{colony}/members")
 
       {:ok, _} =
-        Colonies.change_role(colony_scope(colony), membership_id(beaver, colony), :builder)
+        Colonies.change_role(
+          dam_developer_scope_fixture(colony),
+          membership_id(beaver, colony),
+          :builder
+        )
 
       assert_redirect(lv, ~p"/colonies/#{colony}")
     end
@@ -106,7 +116,8 @@ defmodule BeaverColonyWeb.MembershipLiveTest do
     test "removed: the colony is left", %{conn: conn, colony: colony, beaver: beaver} do
       {:ok, lv, _html} = live(conn, ~p"/colonies/#{colony}")
 
-      {:ok, _} = Colonies.remove_member(colony_scope(colony), membership_id(beaver, colony))
+      {:ok, _} =
+        Colonies.remove_member(dam_developer_scope_fixture(colony), membership_id(beaver, colony))
 
       assert_redirect(lv, ~p"/me/colonies")
     end
@@ -122,40 +133,9 @@ defmodule BeaverColonyWeb.MembershipLiveTest do
       {:ok, lv, _html} = live(conn, ~p"/colonies/#{colony}")
 
       {:ok, _} =
-        Colonies.change_role(
-          BeaverColony.Accounts.Scope.put_colony(
-            beaver_scope_fixture(dam_developer(other)),
-            other,
-            :dam_developer
-          ),
-          membership.id,
-          :lodge_keeper
-        )
+        Colonies.change_role(dam_developer_scope_fixture(other), membership.id, :lodge_keeper)
 
       assert render(lv) =~ "a Builder here"
     end
-  end
-
-  # The founding Dam Developer's scope in `colony`.
-  defp colony_scope(colony) do
-    beaver = dam_developer(colony)
-    BeaverColony.Accounts.Scope.put_colony(beaver_scope_fixture(beaver), colony, :dam_developer)
-  end
-
-  defp dam_developer(colony) do
-    import Ecto.Query
-
-    BeaverColony.Repo.one!(
-      from m in BeaverColony.Colonies.Membership,
-        where: m.colony_id == ^colony.id and m.role == :dam_developer,
-        preload: :beaver
-    ).beaver
-  end
-
-  defp membership_id(beaver, colony) do
-    BeaverColony.Repo.get_by!(BeaverColony.Colonies.Membership,
-      beaver_id: beaver.id,
-      colony_id: colony.id
-    ).id
   end
 end

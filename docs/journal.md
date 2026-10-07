@@ -69,3 +69,29 @@ The Members page uses the same rule only to decide which buttons to show. The co
 Without this, a demoted or removed beaver keeps their old powers on any page they already have open, until their next navigation. A mutation check confirmed it: delete the hook and exactly those three tests fail.
 
 **A compiler catch.** A hidden input named `id` triggers a LiveView warning: it shadows the form element's own `id`. It's now `membership_id`.
+
+## 2026-10-07 — Phase 4: the sidebar
+
+**The nav is a pure function of the scope.** `Nav.build(scope, nav)` returns plain data (the context switcher, the page items, the footer) and `NavComponents` renders it. The layout calls `build/2` *at render time*, so the sidebar can never disagree with the scope it was drawn with. When a role changes, the scope changes and the sidebar follows; nothing has to remember to rebuild it.
+
+**Pages are filtered, not hand-written per role.** `Nav.colony_pages/1` lists every colony page with the ability it needs, and the nav keeps the ones `Scope.can?/2` allows. One test logs in as every role, opens every page, and checks a page is in the nav *exactly* when it opens. Making the Members page ask for less than the nav assumes fails that test. In the old design, the nav trees and the route guards were written separately and could drift.
+
+**The switcher looks like a role switcher but is a colony switcher.** It shows where you are: "🦫 Me" or a colony with your role there. The options are every colony with your role in each. Each option is a plain link, and the destination checks access again.
+
+**Who owns which message.** The sidebar, the colony check and the My colonies page all care when a membership changes. LiveView passes a message no hook halted on to the page, and a page with *some* `handle_info` clauses but none for that message crashes. So each topic now has one kind of listener:
+- `beaver:<id>:access` is the app shell's. `BeaverAuth`'s hook reacts first (rebuild the scope, or leave), then `Nav`, last in every signed-in `live_session`, reloads and **halts**.
+- `beaver:<id>:memberships` and `colony:<id>:memberships` are the pages'. They subscribe themselves.
+
+The context broadcasts to all three.
+
+**Open/closed costs the server nothing.** The checkbox lives in the root layout, which live navigation never re-renders, so it survives every `navigate`. CSS reads it as a sibling of the LiveView container: `.nav-toggle:checked ~ [data-phx-main] .nav__aside`. On wide screens checked means closed and the page widens; on phones checked means open and the sidebar slides over the page. About twenty lines of JS do the two things CSS can't: remember a closed sidebar across full reloads, and close the phone overlay after you pick a page.
+
+**Checked in a real browser** (headless Chromium via Playwright), not just in tests:
+- collapse → full reload → still collapsed;
+- collapse → live navigate → still collapsed (the sidebar's right edge sits at 0px);
+- on a phone the overlay closes after a link;
+- no console errors.
+
+**Smaller things**
+- The generated home page didn't use `Layouts.app`. Its signed-in menu came from the root layout, so moving that menu broke three generated tests. The home page is now a short Beaver Colony welcome that uses the plain layout.
+- `priv/repo/seeds.exs` adds three demo beavers across two colonies, with a pending request. It's safe to run again.

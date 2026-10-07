@@ -50,8 +50,10 @@ defmodule BeaverColonyWeb.Router do
   scope "/", BeaverColonyWeb do
     pipe_through [:browser, :require_authenticated_beaver]
 
+    # Every signed-in live_session ends with BeaverColonyWeb.Nav, which loads the
+    # sidebar and must see membership changes after BeaverAuth has acted on them.
     live_session :require_authenticated_beaver,
-      on_mount: [{BeaverColonyWeb.BeaverAuth, :require_authenticated}] do
+      on_mount: [{BeaverColonyWeb.BeaverAuth, :require_authenticated}, BeaverColonyWeb.Nav] do
       live "/beavers/settings", BeaverLive.Settings, :edit
       live "/beavers/settings/confirm-email/:token", BeaverLive.Settings, :confirm_email
 
@@ -67,7 +69,8 @@ defmodule BeaverColonyWeb.Router do
     live_session :colony,
       on_mount: [
         {BeaverColonyWeb.BeaverAuth, :require_authenticated},
-        {BeaverColonyWeb.BeaverAuth, :assign_colony}
+        {BeaverColonyWeb.BeaverAuth, :assign_colony},
+        BeaverColonyWeb.Nav
       ] do
       live "/colonies/:colony_id", ColonyLive.Dashboard, :show
       live "/colonies/:colony_id/members", ColonyLive.Members, :index

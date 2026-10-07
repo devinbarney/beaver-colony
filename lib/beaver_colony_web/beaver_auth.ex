@@ -271,8 +271,6 @@ defmodule BeaverColonyWeb.BeaverAuth do
           |> Phoenix.LiveView.attach_hook(:pin_colony, :handle_params, &pin_colony/3)
           |> Phoenix.LiveView.attach_hook(:refresh_colony, :handle_info, &refresh_colony/2)
 
-        if Phoenix.LiveView.connected?(socket), do: Colonies.subscribe_my_memberships(scope)
-
         {:cont, socket}
 
       {:error, :not_found} ->
@@ -296,41 +294,44 @@ defmodule BeaverColonyWeb.BeaverAuth do
     end
   end
 
-  # The beaver's membership changed somewhere, maybe while this page is open. The
-  # message only names a colony, so read the membership again rather than trusting it,
-  # then rebuild the scope. Leave the colony if the beaver is no longer in it, or the
-  # page if their new role can't open it. The hook owns this message: it always halts,
-  # so pages never have to handle it.
-  defp refresh_colony({:membership_changed, colony_id}, socket) do
+  # The beaver's access changed somewhere, maybe while this page is open. The message
+  # only names a colony, so read the membership again rather than trusting it, then
+  # rebuild the scope. Leave the colony if the beaver is no longer in it, or the page if
+  # their new role can't open it.
+  #
+  # `BeaverColonyWeb.Nav` subscribes the page to these messages and is the last hook to
+  # see them, rebuilding the sidebar from the refreshed scope and halting. So this hook
+  # continues when the page stays, and halts only when it is leaving.
+  defp refresh_colony({:access_changed, colony_id}, socket) do
     scope = socket.assigns.current_scope
 
-    socket =
-      if colony_id == scope.colony.id do
-        case Colonies.fetch_membership(scope, colony_id) do
-          {:ok, membership} ->
-            scope = Scope.put_colony(scope, membership.colony, membership.role)
-            socket = Phoenix.Component.assign(socket, :current_scope, scope)
-            ability = socket.assigns[:required_ability]
+    if colony_id == scope.colony.id do
+      case Colonies.fetch_membership(scope, colony_id) do
+        {:ok, membership} ->
+          scope = Scope.put_colony(scope, membership.colony, membership.role)
+          socket = Phoenix.Component.assign(socket, :current_scope, scope)
+          ability = socket.assigns[:required_ability]
 
-            if ability && !Scope.can?(scope, ability) do
+          if ability && !Scope.can?(scope, ability) do
+            socket =
               socket
               |> Phoenix.LiveView.put_flash(
                 :error,
                 "Your role changed, and can't open that page."
               )
               |> Phoenix.LiveView.push_navigate(to: denied_path(scope))
-            else
-              socket
-            end
 
-          {:error, :not_found} ->
-            deny_colony(socket)
-        end
-      else
-        socket
+            {:halt, socket}
+          else
+            {:cont, socket}
+          end
+
+        {:error, :not_found} ->
+          {:halt, deny_colony(socket)}
       end
-
-    {:halt, socket}
+    else
+      {:cont, socket}
+    end
   end
 
   defp refresh_colony(_message, socket), do: {:cont, socket}

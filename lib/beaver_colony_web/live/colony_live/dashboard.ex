@@ -11,7 +11,7 @@ defmodule BeaverColonyWeb.ColonyLive.Dashboard do
   @impl true
   def render(assigns) do
     ~H"""
-    <Layouts.app flash={@flash} current_scope={@current_scope}>
+    <Layouts.app flash={@flash} current_scope={@current_scope} nav={@nav}>
       <.header>
         {@current_scope.colony.name}
         <:subtitle>You're a {Policy.display_name(@current_scope.role)} here.</:subtitle>

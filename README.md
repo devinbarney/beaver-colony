@@ -16,6 +16,8 @@ The colony is the tenant. A beaver can belong to many colonies, with one role in
 
 Every account is a beaver, and every beaver has personal pages (`/me`) that belong to no colony.
 
+![The sidebar inside a colony, with the colony switcher open](docs/screenshots/sidebar-switcher.png)
+
 ## Running it
 
 Requirements: Elixir 1.17+ and PostgreSQL.
@@ -30,6 +32,9 @@ The database password defaults to `postgres`. If yours is different, set `PGPASS
 ```sh
 PGPASSWORD=secret mix setup
 ```
+
+`mix setup` also seeds demo beavers, all with the password `beavers build dams`:
+`dam@example.com`, `keeper@example.com` and `builder@example.com`.
 
 Run the tests with `mix test`.
 

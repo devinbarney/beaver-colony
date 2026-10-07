@@ -3,6 +3,7 @@
 
 @import "tailwindcss" source(none);
 @import "phoenix-colocated/beaver_colony/colocated.css";
+@import "./navigation.css";
 @source "../css";
 @source "../js";
 @source "../../lib/beaver_colony_web";

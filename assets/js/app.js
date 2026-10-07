@@ -37,6 +37,31 @@ topbar.config({barColors: {0: "#29d"}, shadowColor: "rgba(0, 0, 0, .3)"})
 window.addEventListener("phx:page-loading-start", _info => topbar.show(300))
 window.addEventListener("phx:page-loading-stop", _info => topbar.hide())
 
+// The sidebar's open/closed state is the #nav-toggle checkbox in the root layout (see
+// assets/css/navigation.css). Live navigation keeps it, so it needs no help there.
+// Two small things CSS can't do:
+const navToggle = document.getElementById("nav-toggle")
+const narrowScreen = window.matchMedia("(max-width: 767px)")
+
+if (navToggle) {
+  // On wide screens, remember a closed sidebar across full page loads.
+  try {
+    if (!narrowScreen.matches && localStorage.getItem("nav:closed") === "true") {
+      navToggle.checked = true
+    }
+  } catch (_e) {}
+
+  navToggle.addEventListener("change", () => {
+    if (narrowScreen.matches) return
+    try { localStorage.setItem("nav:closed", String(navToggle.checked)) } catch (_e) {}
+  })
+
+  // On narrow screens the sidebar covers the page, so close it once you've picked one.
+  window.addEventListener("phx:page-loading-start", ({detail}) => {
+    if (narrowScreen.matches && detail.kind !== "patch") navToggle.checked = false
+  })
+}
+
 // connect if there are any LiveViews on the page
 liveSocket.connect()
 

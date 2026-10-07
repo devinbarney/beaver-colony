@@ -154,6 +154,16 @@ defmodule BeaverColony.Colonies do
   end
 
   @doc """
+  How many beavers are asking to join the scope's colony.
+  """
+  def count_pending(%Scope{colony: %Colony{id: colony_id}}) do
+    Repo.aggregate(
+      from(m in Membership, where: m.colony_id == ^colony_id and m.status == :pending),
+      :count
+    )
+  end
+
+  @doc """
   Lets a beaver who asked to join into the colony. Needs `:manage_members`.
   """
   def approve_membership(%Scope{} = scope, membership_id) do
@@ -247,47 +257,55 @@ defmodule BeaverColony.Colonies do
 
   ## Live updates
   #
-  # A membership change is announced on two topics, both derived from the scope the
-  # way `phx.gen.live` derives its topics:
+  # A membership change is announced on three topics, each derived from a scope the
+  # way `phx.gen.live` derives its topics. Each topic has one kind of listener, so a
+  # listener can safely swallow every message on the topics it subscribed to:
   #
-  #   * the beaver's, so their open pages re-check their access (`BeaverColonyWeb.BeaverAuth`)
-  #   * the colony's, so its Members page can refresh
+  #   * the beaver's *access* topic, for the app shell: `BeaverColonyWeb.BeaverAuth`
+  #     re-checks the open colony page and `BeaverColonyWeb.Nav` rebuilds the sidebar
+  #   * the beaver's *memberships* topic, for pages listing the beaver's colonies
+  #   * the colony's *memberships* topic, for pages listing the colony's members
   #
-  # The messages only say *which* colony changed, never the new role. Receivers read
+  # The messages only say *which* colony changed, never the new role. Listeners read
   # the membership again from the database, so a message can't grant anything.
 
   @doc """
-  Subscribes to changes in the scope's beaver's own memberships.
+  Subscribes the app shell to changes in the scope's beaver's access to any colony.
+  Only `BeaverColonyWeb.Nav` calls this; pages use `subscribe_my_memberships/1`.
+
+  Messages: `{:access_changed, colony_id}`.
+  """
+  def subscribe_my_access(%Scope{beaver: beaver}) do
+    Phoenix.PubSub.subscribe(BeaverColony.PubSub, "beaver:#{beaver.id}:access")
+  end
+
+  @doc """
+  Subscribes a page to changes in the scope's beaver's own memberships.
 
   Messages: `{:membership_changed, colony_id}`.
   """
   def subscribe_my_memberships(%Scope{beaver: beaver}) do
-    Phoenix.PubSub.subscribe(BeaverColony.PubSub, beaver_topic(beaver.id))
+    Phoenix.PubSub.subscribe(BeaverColony.PubSub, "beaver:#{beaver.id}:memberships")
   end
 
   @doc """
-  Subscribes to changes in the scope's colony's memberships.
+  Subscribes a page to changes in the scope's colony's memberships.
 
   Messages: `{:memberships_changed, colony_id}`.
   """
   def subscribe_colony_memberships(%Scope{colony: %Colony{id: colony_id}}) do
-    Phoenix.PubSub.subscribe(BeaverColony.PubSub, colony_topic(colony_id))
+    Phoenix.PubSub.subscribe(BeaverColony.PubSub, "colony:#{colony_id}:memberships")
   end
 
   defp broadcast_changed(%Membership{beaver_id: beaver_id, colony_id: colony_id}) do
-    Phoenix.PubSub.broadcast(
-      BeaverColony.PubSub,
-      beaver_topic(beaver_id),
-      {:membership_changed, colony_id}
-    )
+    for {topic, message} <- [
+          {"beaver:#{beaver_id}:access", {:access_changed, colony_id}},
+          {"beaver:#{beaver_id}:memberships", {:membership_changed, colony_id}},
+          {"colony:#{colony_id}:memberships", {:memberships_changed, colony_id}}
+        ] do
+      Phoenix.PubSub.broadcast(BeaverColony.PubSub, topic, message)
+    end
 
-    Phoenix.PubSub.broadcast(
-      BeaverColony.PubSub,
-      colony_topic(colony_id),
-      {:memberships_changed, colony_id}
-    )
+    :ok
   end
-
-  defp beaver_topic(beaver_id), do: "beaver:#{beaver_id}:memberships"
-  defp colony_topic(colony_id), do: "colony:#{colony_id}:memberships"
 end

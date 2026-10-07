@@ -16,7 +16,7 @@ defmodule BeaverColonyWeb.ColonyLive.Members do
   @impl true
   def render(assigns) do
     ~H"""
-    <Layouts.app flash={@flash} current_scope={@current_scope}>
+    <Layouts.app flash={@flash} current_scope={@current_scope} nav={@nav}>
       <.header>
         Members
         <:subtitle>Everyone in {@current_scope.colony.name}.</:subtitle>
@@ -135,6 +135,8 @@ defmodule BeaverColonyWeb.ColonyLive.Members do
     socket
     |> assign(:members, Colonies.list_members(scope))
     |> assign(:pending, Colonies.list_pending(scope))
+    # The sidebar's pending badge counts the same requests.
+    |> BeaverColonyWeb.Nav.refresh()
   end
 
   # These only decide which controls to show. The context checks the same rules.

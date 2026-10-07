@@ -11,7 +11,7 @@ defmodule BeaverColonyWeb.ColonyLive.Mine do
   @impl true
   def render(assigns) do
     ~H"""
-    <Layouts.app flash={@flash} current_scope={@current_scope}>
+    <Layouts.app flash={@flash} current_scope={@current_scope} nav={@nav}>
       <.header>
         My colonies
         <:subtitle>Every colony you belong to, and your role in each.</:subtitle>

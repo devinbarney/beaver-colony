@@ -38,26 +38,13 @@
     </script>
   </head>
   <body>
-    <ul class="menu menu-horizontal w-full relative z-10 flex items-center gap-4 px-4 sm:px-6 lg:px-8 justify-end">
-      <%= if @current_scope do %>
-        <li>
-          {@current_scope.beaver.email}
-        </li>
-        <li>
-          <.link href={~p"/beavers/settings"}>Settings</.link>
-        </li>
-        <li>
-          <.link href={~p"/beavers/log-out"} method="delete">Log out</.link>
-        </li>
-      <% else %>
-        <li>
-          <.link href={~p"/beavers/register"}>Register</.link>
-        </li>
-        <li>
-          <.link href={~p"/beavers/log-in"}>Log in</.link>
-        </li>
-      <% end %>
-    </ul>
+    <%!--
+      The sidebar's open/closed state. It lives here, in the root layout, because live
+      navigation never re-renders the root layout: the checkbox (and so the sidebar's
+      state) survives every page change, with no server involved. CSS reads it as a
+      sibling of the LiveView container: `#nav-toggle:checked ~ [data-phx-main] ...`.
+    --%>
+    <input type="checkbox" id="nav-toggle" class="nav-toggle" hidden />
     {@inner_content}
   </body>
 </html>

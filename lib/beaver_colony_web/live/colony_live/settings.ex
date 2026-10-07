@@ -12,7 +12,7 @@ defmodule BeaverColonyWeb.ColonyLive.Settings do
   @impl true
   def render(assigns) do
     ~H"""
-    <Layouts.app flash={@flash} current_scope={@current_scope}>
+    <Layouts.app flash={@flash} current_scope={@current_scope} nav={@nav}>
       <.header>
         Colony settings
       </.header>
