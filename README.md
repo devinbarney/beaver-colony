@@ -33,6 +33,13 @@ The database password defaults to `postgres`. If yours is different, set `PGPASS
 PGPASSWORD=secret mix setup
 ```
 
+To set it once for this directory, with [mise](https://mise.jdx.dev), put it in a `mise.local.toml` (already in `.gitignore`) and run `mise trust`:
+
+```toml
+[env]
+PGPASSWORD = "secret"
+```
+
 `mix setup` also seeds demo beavers, all with the password `beavers build dams`:
 `dam@example.com`, `keeper@example.com` and `builder@example.com`.
 

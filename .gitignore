@@ -35,3 +35,7 @@ beaver_colony-*.tar
 npm-debug.log
 /assets/node_modules/
 
+
+# Local, per-developer environment (e.g. PGPASSWORD). Never commit.
+mise.local.toml
+.mise.local.toml
