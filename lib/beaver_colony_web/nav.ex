@@ -105,6 +105,12 @@ defmodule BeaverColonyWeb.Nav do
       },
       %{id: "dam", label: "The dam", path: ~p"/colonies/#{colony}/dam", requires: :view_dam},
       %{
+        id: "sites",
+        label: "Build sites",
+        path: ~p"/colonies/#{colony}/sites",
+        requires: :view_sites
+      },
+      %{
         id: "members",
         label: "Members",
         path: ~p"/colonies/#{colony}/members",

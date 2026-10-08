@@ -142,3 +142,11 @@ So the generator gives you **isolation, not authorization.** The added commit pu
 **A gotcha worth a paragraph: don't name an assign `:layout`.** LiveView reserves `@layout` for the page layout. Assigning the stick stacking to `:layout` crashed the first render deep inside `Phoenix.Controller`, behind an error page that hid the cause. It's now `:stacked`.
 
 **Checked live in two browsers:** a Builder placed a stick and a Lodge Keeper's open page went from 6 sticks to 7 without a reload.
+
+## 2026-10-08 — Phase 5b: build sites
+
+`mix phx.gen.live Building Site sites name:string river_mile:float notes:text` with the colony scope gave index, show and form LiveViews with colony-nested routes, plus the scoped context. Like the sticks, it gave isolation without authorization. This time the changes go in the same commit; the sticks already showed the raw diff. The changes:
+- **Abilities.** `:view_sites` for Builders and up, and `:manage_sites` for Lodge Keepers and up. Each LiveView declares its ability with one `on_mount` line: index and show `:view_sites`, the form `:manage_sites`.
+- **Controls follow the role.** New, Edit and Delete only render for roles that can use them. The context's `authorize(scope, :manage_sites)` is the real guard, and a test calls the context directly as a Builder.
+- **The migration hadn't run anywhere yet**, so editing it directly (NOT NULL `name` and `colony_id`) was fine. Contrast with the sticks.
+- The generator's placeholder copy ("Listing Sites", "This is a site record from your database") got real words, and its tests were updated to match.

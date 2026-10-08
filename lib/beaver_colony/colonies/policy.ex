@@ -18,6 +18,8 @@ defmodule BeaverColony.Colonies.Policy do
     view_dam: :builder,
     place_stick: :builder,
     remove_stick: :lodge_keeper,
+    view_sites: :builder,
+    manage_sites: :lodge_keeper,
     manage_members: :lodge_keeper,
     manage_colony: :dam_developer
   }

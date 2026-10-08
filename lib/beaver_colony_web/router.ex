@@ -87,6 +87,10 @@ defmodule BeaverColonyWeb.Router do
       ] do
       live "/colonies/:colony_id", ColonyLive.Dashboard, :show
       live "/colonies/:colony_id/dam", ColonyLive.Dam, :show
+      live "/colonies/:colony_id/sites", SiteLive.Index, :index
+      live "/colonies/:colony_id/sites/new", SiteLive.Form, :new
+      live "/colonies/:colony_id/sites/:id", SiteLive.Show, :show
+      live "/colonies/:colony_id/sites/:id/edit", SiteLive.Form, :edit
       live "/colonies/:colony_id/members", ColonyLive.Members, :index
       live "/colonies/:colony_id/settings", ColonyLive.Settings, :edit
     end

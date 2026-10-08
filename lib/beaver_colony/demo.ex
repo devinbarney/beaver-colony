@@ -20,7 +20,7 @@ defmodule BeaverColony.Demo do
 
   import Ecto.Query
 
-  alias BeaverColony.{Accounts, Colonies, Dams, Repo}
+  alias BeaverColony.{Accounts, Building, Colonies, Dams, Repo}
   alias BeaverColony.Accounts.{Beaver, Scope}
   alias BeaverColony.Colonies.{Colony, Membership}
 
@@ -96,6 +96,16 @@ defmodule BeaverColony.Demo do
           ] do
         scope = Scope.put_colony(Scope.for_beaver(beaver), willamette, role)
         {:ok, _} = Dams.create_stick(scope, %{x: x, length: length})
+      end
+
+      keeper_scope = Scope.put_colony(Scope.for_beaver(keeper), willamette, :lodge_keeper)
+
+      for {name, mile, notes} <- [
+            {"Mill Creek Narrows", 12.5, "Narrow and shallow. Good alder on both banks."},
+            {"Beaver Slough", 18.0, "Slow water, deep mud. Bring long sticks."}
+          ] do
+        {:ok, _} =
+          Building.create_site(keeper_scope, %{name: name, river_mile: mile, notes: notes})
       end
     end
 
