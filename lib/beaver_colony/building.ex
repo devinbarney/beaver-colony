@@ -9,7 +9,7 @@ defmodule BeaverColony.Building do
   import Ecto.Query, warn: false
   alias BeaverColony.Repo
 
-  alias BeaverColony.Building.Site
+  alias BeaverColony.Building.{Shift, Signup, Site}
   alias BeaverColony.Accounts.Scope
 
   @doc """
@@ -155,5 +155,179 @@ defmodule BeaverColony.Building do
 
   defp authorize(scope, ability) do
     if Scope.can?(scope, ability), do: :ok, else: {:error, :unauthorized}
+  end
+
+  ## The build schedule
+
+  @doc """
+  Subscribes to changes in the scope's colony's schedule: shifts added or removed, and
+  beavers signing up or withdrawing.
+
+  Messages: `{:schedule_changed, colony_id}`.
+  """
+  def subscribe_schedule(%Scope{} = scope) do
+    Phoenix.PubSub.subscribe(BeaverColony.PubSub, "colony:#{scope.colony.id}:schedule")
+  end
+
+  defp broadcast_schedule(colony_id) do
+    Phoenix.PubSub.broadcast(
+      BeaverColony.PubSub,
+      "colony:#{colony_id}:schedule",
+      {:schedule_changed, colony_id}
+    )
+  end
+
+  @doc """
+  The colony's shifts from `from` on (now, by default), soonest first, with their site and
+  who has signed up.
+  """
+  def list_shifts(%Scope{} = scope, from \\ NaiveDateTime.utc_now()) do
+    Repo.all(
+      from s in Shift,
+        where: s.colony_id == ^scope.colony.id and s.starts_at >= ^from,
+        order_by: [s.starts_at, s.id],
+        preload: [:site, signups: :beaver]
+    )
+  end
+
+  @doc """
+  Gets a single shift of the scope's colony.
+
+  Raises `Ecto.NoResultsError` if the Shift does not exist.
+  """
+  def get_shift!(%Scope{} = scope, id) do
+    Repo.get_by!(Shift, id: id, colony_id: scope.colony.id)
+  end
+
+  @doc """
+  Adds a shift at one of the colony's sites. Needs `:manage_schedule`.
+
+  `attrs["site_id"]` comes from the caller, so it's checked against the scope's colony:
+  a site in another colony is "not found", like everything else that isn't yours.
+  """
+  def create_shift(%Scope{} = scope, attrs) do
+    site_id = attrs["site_id"] || attrs[:site_id]
+
+    with :ok <- authorize(scope, :manage_schedule),
+         {:ok, site} <- fetch_site(scope, site_id),
+         {:ok, shift} <-
+           %Shift{site_id: site.id}
+           |> Shift.changeset(attrs, scope)
+           |> Repo.insert() do
+      broadcast_schedule(scope.colony.id)
+      {:ok, shift}
+    end
+  end
+
+  @doc """
+  Removes a shift and its signups. Needs `:manage_schedule`.
+  """
+  def delete_shift(%Scope{} = scope, %Shift{} = shift) do
+    true = shift.colony_id == scope.colony.id
+
+    with :ok <- authorize(scope, :manage_schedule),
+         {:ok, shift} <- Repo.delete(shift) do
+      broadcast_schedule(scope.colony.id)
+      {:ok, shift}
+    end
+  end
+
+  @doc """
+  Returns an `%Ecto.Changeset{}` for the shift form.
+  """
+  def change_shift(%Scope{} = scope, %Shift{} = shift, attrs \\ %{}) do
+    true = shift.colony_id == scope.colony.id
+
+    Shift.changeset(shift, attrs, scope)
+  end
+
+  @doc """
+  Signs the scope's beaver up to help on a shift. Needs `:sign_up`, and the shift must
+  not be full or already started.
+  """
+  def sign_up(%Scope{} = scope, shift_id) do
+    with :ok <- authorize(scope, :sign_up),
+         {:ok, signup} <- Repo.transact(fn -> insert_signup(scope, shift_id) end) do
+      broadcast_schedule(scope.colony.id)
+      {:ok, signup}
+    end
+  end
+
+  # The shift's row stays locked from the "is there room?" check to the insert, so two
+  # beavers can't both take the last place.
+  defp insert_signup(scope, shift_id) do
+    with {:ok, shift} <- fetch_shift(scope, shift_id, lock: true),
+         :ok <- check_open(shift) do
+      %Signup{shift_id: shift.id, beaver_id: scope.beaver.id}
+      |> Signup.insert_changeset()
+      |> Repo.insert()
+    end
+  end
+
+  @doc """
+  Takes the scope's beaver off a shift they signed up for.
+  """
+  def withdraw(%Scope{} = scope, shift_id) do
+    with {:ok, shift} <- fetch_shift(scope, shift_id),
+         %Signup{} = signup <-
+           Repo.get_by(Signup, shift_id: shift.id, beaver_id: scope.beaver.id),
+         {:ok, signup} <- Repo.delete(signup) do
+      broadcast_schedule(scope.colony.id)
+      {:ok, signup}
+    else
+      nil -> {:error, :not_found}
+      error -> error
+    end
+  end
+
+  @doc """
+  The scope's beaver's upcoming shifts in **every** colony they belong to, soonest
+  first, with site and colony. Personal: it reads only `scope.beaver`, never a colony,
+  and only colonies the beaver is still an approved member of.
+  """
+  def list_my_shifts(%Scope{beaver: beaver}, from \\ NaiveDateTime.utc_now()) do
+    Repo.all(
+      from s in Shift,
+        join: signup in assoc(s, :signups),
+        join: m in BeaverColony.Colonies.Membership,
+        on: m.colony_id == s.colony_id and m.beaver_id == ^beaver.id and m.status == :approved,
+        where: signup.beaver_id == ^beaver.id and s.starts_at >= ^from,
+        order_by: [s.starts_at, s.id],
+        preload: [:site, :colony]
+    )
+  end
+
+  defp fetch_site(scope, site_id) do
+    with {:ok, site_id} <- Ecto.UUID.cast(site_id),
+         %Site{} = site <- Repo.get_by(Site, id: site_id, colony_id: scope.colony.id) do
+      {:ok, site}
+    else
+      _ -> {:error, :not_found}
+    end
+  end
+
+  defp fetch_shift(scope, shift_id, opts \\ []) do
+    with {:ok, shift_id} <- Ecto.UUID.cast(shift_id),
+         %Shift{} = shift <-
+           from(s in Shift, where: s.id == ^shift_id and s.colony_id == ^scope.colony.id)
+           |> then(&if(opts[:lock], do: lock(&1, "FOR UPDATE"), else: &1))
+           |> Repo.one() do
+      {:ok, Repo.preload(shift, :signups)}
+    else
+      _ -> {:error, :not_found}
+    end
+  end
+
+  defp check_open(shift) do
+    cond do
+      NaiveDateTime.compare(shift.starts_at, NaiveDateTime.utc_now()) != :gt ->
+        {:error, :started}
+
+      length(shift.signups) >= shift.needed ->
+        {:error, :full}
+
+      true ->
+        :ok
+    end
   end
 end

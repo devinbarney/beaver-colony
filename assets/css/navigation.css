@@ -173,6 +173,11 @@
   box-shadow: inset 4px 0 0 var(--nav-hover);
 }
 
+/* Hovering the current page still reads as a hover. */
+.nav-item__link--current:hover {
+  color: var(--nav-hover-text);
+}
+
 /* Things waiting on you behind this link. Hidden at zero, not shown as a 0. */
 .nav-item__badge {
   flex: none;

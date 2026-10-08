@@ -150,3 +150,15 @@ So the generator gives you **isolation, not authorization.** The added commit pu
 - **Controls follow the role.** New, Edit and Delete only render for roles that can use them. The context's `authorize(scope, :manage_sites)` is the real guard, and a test calls the context directly as a Builder.
 - **The migration hadn't run anywhere yet**, so editing it directly (NOT NULL `name` and `colony_id`) was fine. Contrast with the sticks.
 - The generator's placeholder copy ("Listing Sites", "This is a site record from your database") got real words, and its tests were updated to match.
+
+## 2026-10-08 — Phase 5c: the build schedule
+
+**Shifts** (generated with the colony scope, `--merge-with-existing-context` because `Building` already existed) run at a colony's build sites. **Signups** put a beaver on a shift. Builders sign up and withdraw; Lodge Keepers and up add and remove shifts. The schedule page groups shifts by day and updates live for everyone.
+
+**A foreign key from a form is an id from the caller.** The generator put `site_id` in the schema but left it out of `cast/3`, and that's deliberate: it won't take a foreign key from user input for you. `create_shift/2` looks the site up *within the scope's colony* and sets the id itself, so a shift can't be put on another colony's site. A mutation check confirmed it: drop the colony filter from that lookup and the test fails. The colony scope protects the tables the generator knows about. Every foreign key you add is a new door to check.
+
+**The last place.** Signing up counts the signups and then inserts. Two beavers taking the last place at the same moment would both get it, so the shift's row is locked (`FOR UPDATE`) from the check to the insert, inside one transaction.
+
+**My shifts** is a personal page. Its query reads only `scope.beaver` and joins through approved memberships, so it spans every colony you're in and none you've left. That's the other half of the scope design: personal pages don't need a colony, and must not use one.
+
+**Demo seeds** add two sites and two shifts in the coming days, with the Builder on the first. The reset keeps the dates current.

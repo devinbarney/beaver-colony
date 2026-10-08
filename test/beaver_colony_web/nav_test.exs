@@ -34,18 +34,23 @@ defmodule BeaverColonyWeb.NavTest do
     test "personal pages when there's no colony in the scope" do
       nav = nav_for(beaver_scope_fixture())
 
-      assert item_ids(nav) == ["my_colonies", "account"]
+      assert item_ids(nav) == ["my_colonies", "my_shifts", "account"]
       assert [%{label: "🦫 Me"}] = nav.context
     end
 
     test "each role sees only the colony pages it can open" do
-      assert item_ids(nav_for(colony_scope_fixture(:builder))) == ["dashboard", "dam", "sites"]
+      assert item_ids(nav_for(colony_scope_fixture(:builder))) == [
+               "dashboard",
+               "dam",
+               "schedule",
+               "sites"
+             ]
 
       assert item_ids(nav_for(colony_scope_fixture(:lodge_keeper))) ==
-               ["dashboard", "dam", "sites", "members"]
+               ["dashboard", "dam", "schedule", "sites", "members"]
 
       assert item_ids(nav_for(colony_scope_fixture(:dam_developer))) ==
-               ["dashboard", "dam", "sites", "members", "settings"]
+               ["dashboard", "dam", "schedule", "sites", "members", "settings"]
     end
 
     test "the switcher lists me and every colony with my role, marking where I am" do

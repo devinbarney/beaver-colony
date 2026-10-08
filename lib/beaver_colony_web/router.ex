@@ -72,6 +72,7 @@ defmodule BeaverColonyWeb.Router do
 
       # Personal pages: the beaver's own data, no colony in the scope.
       live "/me/colonies", ColonyLive.Mine, :index
+      live "/me/shifts", MeLive.Shifts, :index
     end
 
     post "/beavers/update-password", BeaverSessionController, :update_password
@@ -87,6 +88,7 @@ defmodule BeaverColonyWeb.Router do
       ] do
       live "/colonies/:colony_id", ColonyLive.Dashboard, :show
       live "/colonies/:colony_id/dam", ColonyLive.Dam, :show
+      live "/colonies/:colony_id/schedule", ColonyLive.Schedule, :index
       live "/colonies/:colony_id/sites", SiteLive.Index, :index
       live "/colonies/:colony_id/sites/new", SiteLive.Form, :new
       live "/colonies/:colony_id/sites/:id", SiteLive.Show, :show

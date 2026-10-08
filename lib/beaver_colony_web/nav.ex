@@ -105,6 +105,12 @@ defmodule BeaverColonyWeb.Nav do
       },
       %{id: "dam", label: "The dam", path: ~p"/colonies/#{colony}/dam", requires: :view_dam},
       %{
+        id: "schedule",
+        label: "Build schedule",
+        path: ~p"/colonies/#{colony}/schedule",
+        requires: :view_schedule
+      },
+      %{
         id: "sites",
         label: "Build sites",
         path: ~p"/colonies/#{colony}/sites",
@@ -172,6 +178,7 @@ defmodule BeaverColonyWeb.Nav do
   defp items(_scope, _nav) do
     [
       %{id: "my_colonies", label: "My colonies", path: ~p"/me/colonies"},
+      %{id: "my_shifts", label: "My shifts", path: ~p"/me/shifts"},
       %{id: "account", label: "Account settings", path: ~p"/beavers/settings"}
     ]
   end

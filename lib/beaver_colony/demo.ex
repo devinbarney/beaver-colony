@@ -100,13 +100,38 @@ defmodule BeaverColony.Demo do
 
       keeper_scope = Scope.put_colony(Scope.for_beaver(keeper), willamette, :lodge_keeper)
 
-      for {name, mile, notes} <- [
-            {"Mill Creek Narrows", 12.5, "Narrow and shallow. Good alder on both banks."},
-            {"Beaver Slough", 18.0, "Slow water, deep mud. Bring long sticks."}
-          ] do
-        {:ok, _} =
-          Building.create_site(keeper_scope, %{name: name, river_mile: mile, notes: notes})
-      end
+      [narrows, slough] =
+        for {name, mile, notes} <- [
+              {"Mill Creek Narrows", 12.5, "Narrow and shallow. Good alder on both banks."},
+              {"Beaver Slough", 18.0, "Slow water, deep mud. Bring long sticks."}
+            ] do
+          {:ok, site} =
+            Building.create_site(keeper_scope, %{name: name, river_mile: mile, notes: notes})
+
+          site
+        end
+
+      # Shifts in the coming days (the reset keeps them coming), one with the Builder on it.
+      today = Date.utc_today()
+
+      {:ok, first} =
+        Building.create_shift(keeper_scope, %{
+          site_id: narrows.id,
+          starts_at: NaiveDateTime.new!(Date.add(today, 1), ~T[09:00:00]),
+          hours: 3,
+          needed: 3
+        })
+
+      {:ok, _} =
+        Building.create_shift(keeper_scope, %{
+          site_id: slough.id,
+          starts_at: NaiveDateTime.new!(Date.add(today, 2), ~T[13:00:00]),
+          hours: 4,
+          needed: 2
+        })
+
+      builder_scope = Scope.put_colony(Scope.for_beaver(builder), willamette, :builder)
+      {:ok, _} = Building.sign_up(builder_scope, first.id)
     end
 
     :ok
