@@ -39,11 +39,13 @@ defmodule BeaverColonyWeb.NavTest do
     end
 
     test "each role sees only the colony pages it can open" do
-      assert item_ids(nav_for(colony_scope_fixture(:builder))) == ["dashboard"]
-      assert item_ids(nav_for(colony_scope_fixture(:lodge_keeper))) == ["dashboard", "members"]
+      assert item_ids(nav_for(colony_scope_fixture(:builder))) == ["dashboard", "dam"]
+
+      assert item_ids(nav_for(colony_scope_fixture(:lodge_keeper))) ==
+               ["dashboard", "dam", "members"]
 
       assert item_ids(nav_for(colony_scope_fixture(:dam_developer))) ==
-               ["dashboard", "members", "settings"]
+               ["dashboard", "dam", "members", "settings"]
     end
 
     test "the switcher lists me and every colony with my role, marking where I am" do

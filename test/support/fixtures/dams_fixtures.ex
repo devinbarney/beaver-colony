@@ -5,13 +5,13 @@ defmodule BeaverColony.DamsFixtures do
   """
 
   @doc """
-  Generate a stick.
+  Generate a stick, placed by the scope's beaver.
   """
   def stick_fixture(scope, attrs \\ %{}) do
     attrs =
       Enum.into(attrs, %{
-        length: 42,
-        x: 42
+        length: 20,
+        x: 10
       })
 
     {:ok, stick} = BeaverColony.Dams.create_stick(scope, attrs)

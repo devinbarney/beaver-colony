@@ -116,3 +116,29 @@ Same function, same components, one more area. That's the payoff of keeping the 
 **Code highlighting** comes from Makeup: a friendly light style, and monokai under `[data-theme=dark]`, generated once into `assets/css/makeup.css`.
 
 **The articles are drafts**, written from this journal, waiting to be rewritten in the author's voice.
+
+## 2026-10-08 — Phase 5a: the dam
+
+**What the generator gives you, and what it doesn't.** `mix phx.gen.context Dams Stick sticks x:integer length:integer` used the colony scope from Phase 2, and the raw output is committed on its own so the diff is easy to read.
+
+It gave, for free:
+- every query filtered by `scope.colony.id`;
+- `colony_id` set from the scope, never from params;
+- a scoped topic, `colony:<id>:sticks`;
+- `true = stick.colony_id == scope.colony.id` before any update or delete;
+- tests that check one colony can't read another's sticks.
+
+It didn't give:
+- **authorization**: any member could do anything;
+- a NOT NULL on `colony_id`;
+- any record of who placed a stick.
+
+So the generator gives you **isolation, not authorization.** The added commit puts `authorize(scope, :place_stick)` / `:remove_stick` in the context, sets `beaver_id` from the scope, and fixes the columns.
+
+**Don't edit a migration that has run.** The tightening went into a *second* migration, which is what you'd do once the first had shipped.
+
+**The dam is a pure function.** Sticks fall in the order they were placed and rest on the highest earlier stick they overlap: `Dams.layout/1`, tested on its own. The page draws an SVG from it, plus a dashed "ghost" showing where the stick you're aiming will land. Pulling a stick out lets the ones above it settle, because their rows are never stored.
+
+**A gotcha worth a paragraph: don't name an assign `:layout`.** LiveView reserves `@layout` for the page layout. Assigning the stick stacking to `:layout` crashed the first render deep inside `Phoenix.Controller`, behind an error page that hid the cause. It's now `:stacked`.
+
+**Checked live in two browsers:** a Builder placed a stick and a Lodge Keeper's open page went from 6 sticks to 7 without a reload.

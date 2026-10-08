@@ -20,7 +20,7 @@ defmodule BeaverColony.Demo do
 
   import Ecto.Query
 
-  alias BeaverColony.{Accounts, Colonies, Repo}
+  alias BeaverColony.{Accounts, Colonies, Dams, Repo}
   alias BeaverColony.Accounts.{Beaver, Scope}
   alias BeaverColony.Colonies.{Colony, Membership}
 
@@ -84,6 +84,19 @@ defmodule BeaverColony.Demo do
       end
 
       {:ok, _} = Colonies.request_to_join(Scope.for_beaver(builder), klamath.id)
+
+      # A dam already under way, so the first visit has something to look at.
+      for {beaver, role, x, length} <- [
+            {dam, :dam_developer, 0, 30},
+            {builder, :builder, 30, 30},
+            {keeper, :lodge_keeper, 60, 30},
+            {builder, :builder, 10, 25},
+            {dam, :dam_developer, 40, 25},
+            {keeper, :lodge_keeper, 25, 20}
+          ] do
+        scope = Scope.put_colony(Scope.for_beaver(beaver), willamette, role)
+        {:ok, _} = Dams.create_stick(scope, %{x: x, length: length})
+      end
     end
 
     :ok

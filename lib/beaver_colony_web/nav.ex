@@ -103,6 +103,7 @@ defmodule BeaverColonyWeb.Nav do
         path: ~p"/colonies/#{colony}",
         requires: :view_colony
       },
+      %{id: "dam", label: "The dam", path: ~p"/colonies/#{colony}/dam", requires: :view_dam},
       %{
         id: "members",
         label: "Members",

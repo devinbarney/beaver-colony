@@ -15,6 +15,9 @@ defmodule BeaverColony.Colonies.Policy do
 
   @abilities %{
     view_colony: :builder,
+    view_dam: :builder,
+    place_stick: :builder,
+    remove_stick: :lodge_keeper,
     manage_members: :lodge_keeper,
     manage_colony: :dam_developer
   }
